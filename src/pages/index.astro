@@ -1,0 +1,74 @@
+---
+import Base from '../layouts/Base.astro';
+import Game from '../components/Game.astro';
+
+const base = import.meta.env.BASE_URL;
+const url = new URL(`${base}/`, Astro.site ?? 'https://shubhamtatvamasi.com').href;
+
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'VideoGame',
+  name: 'Asterism',
+  url,
+  description:
+    'A calm daily logic puzzle. Place two stars in every row, column and constellation without letting any two stars touch.',
+  genre: ['Puzzle', 'Logic', 'Daily puzzle'],
+  gamePlatform: 'Web browser',
+  applicationCategory: 'Game',
+  operatingSystem: 'Any',
+  playMode: 'SinglePlayer',
+  inLanguage: 'en',
+  author: {
+    '@type': 'Person',
+    name: 'Shubham Tatvamasi',
+    url: 'https://shubhamtatvamasi.com',
+  },
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+};
+---
+
+<Base>
+  <Game />
+
+  <section class="afterword" aria-labelledby="afterword-title">
+    <div class="afterword__grid">
+      <div>
+        <p class="eyebrow"><span class="eyebrow__rule" aria-hidden="true"></span> Field notes</p>
+        <h2 class="afterword__title" id="afterword-title">A small game about attention.</h2>
+      </div>
+      <div class="afterword__body">
+        <p>
+          Asterism is a star-charting puzzle in the Star Battle tradition: eight rows, eight
+          columns, eight shaded regions, and exactly two stars for each. The rules fit in a
+          sentence. The deductions can keep you for a while.
+        </p>
+        <p>
+          Every chart is built backwards from a finished sky and verified to have
+          <strong>exactly one solution</strong>, so you never need to guess. Work the rows and
+          columns, watch the region counts, and remember that a star quietly rules out all eight
+          cells around it.
+        </p>
+        <p>
+          There is no timer pressure and no account. A new chart waits each day at 00:00 UTC;
+          the free sky is endless. Your streak and record live only in this browser.
+        </p>
+        <p class="afterword__meta">
+          <span>Daily &amp; endless</span>
+          <span>One guaranteed solution</span>
+          <span>Keyboard friendly</span>
+          <span>No tracking</span>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>
+      Made by
+      <a href="https://shubhamtatvamasi.com" target="_blank" rel="noopener noreferrer">Shubham Tatvamasi</a>
+    </p>
+    <p class="footer__note">A quiet puzzle for the night sky.</p>
+  </footer>
+
+  <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+</Base>

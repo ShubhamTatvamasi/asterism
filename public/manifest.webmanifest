@@ -1,0 +1,26 @@
+{
+  "name": "Asterism — a daily star chart",
+  "short_name": "Asterism",
+  "description": "A calm daily logic puzzle. Two stars in every row, column and constellation.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#060810",
+  "theme_color": "#060810",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "./apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

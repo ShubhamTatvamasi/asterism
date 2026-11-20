@@ -1,0 +1,64 @@
+---
+import '@fontsource-variable/fraunces/full.css';
+import '@fontsource-variable/space-grotesk';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+}
+
+const {
+  title = 'Asterism — a daily star-placing puzzle',
+  description = 'Place two stars in every row, column and constellation. A calm, hand-crafted logic puzzle for the night sky. New chart every day.',
+  image = 'og.png',
+} = Astro.props;
+
+const site = Astro.site ?? new URL('https://shubhamtatvamasi.com');
+const base = import.meta.env.BASE_URL;
+const canonical = new URL(`${base}/`, site).href;
+const ogImage = new URL(`${base}/${image}`, site).href;
+---
+
+<!doctype html>
+<html lang="en" class="theme-night">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#060810" />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href={`${base}/favicon.svg`} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={`${base}/apple-touch-icon.png`} />
+    <link rel="manifest" href={`${base}/manifest.webmanifest`} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Asterism" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    <link rel="preconnect" href="https://shubhamtatvamasi.com" />
+    <slot name="head" />
+  </head>
+  <body>
+    <div class="atmosphere" aria-hidden="true">
+      <div class="atmosphere__glow atmosphere__glow--a"></div>
+      <div class="atmosphere__glow atmosphere__glow--b"></div>
+      <div class="atmosphere__grain"></div>
+    </div>
+    <canvas id="sky" class="sky" aria-hidden="true"></canvas>
+    <slot />
+  </body>
+</html>

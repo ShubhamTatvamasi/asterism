@@ -1,0 +1,316 @@
+---
+const base = import.meta.env.BASE_URL;
+---
+
+<div class="app" id="app" data-base={base}>
+  <header class="topbar">
+    <a class="wordmark" href={`${base}/`} aria-label="Asterism home">
+      <svg class="wordmark__glyph" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 2.2c.8 5.6 3.9 8.7 9.5 9.5-5.6.8-8.7 3.9-9.5 9.5-.8-5.6-3.9-8.7-9.5-9.5C8.1 10.9 11.2 7.8 12 2.2Z" />
+      </svg>
+      <span>Asterism</span>
+    </a>
+
+    <p class="topbar__meta">
+      <span id="top-date">—</span>
+      <span class="topbar__sep" aria-hidden="true"></span>
+      <span id="top-number">No. 001</span>
+    </p>
+
+    <div class="topbar__actions">
+      <button class="icon-button" id="sound-toggle" type="button" aria-pressed="true" aria-label="Mute sound" title="Sound">
+        <svg class="icon icon--sound-on" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 9.5h3.2L12 5.6v12.8L7.2 14.5H4z" />
+          <path d="M15.6 9.2a3.8 3.8 0 0 1 0 5.6M18.2 6.6a7.4 7.4 0 0 1 0 10.8" />
+        </svg>
+        <svg class="icon icon--sound-off" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 9.5h3.2L12 5.6v12.8L7.2 14.5H4z" />
+          <path d="m16 9.5 5 5m0-5-5 5" />
+        </svg>
+      </button>
+      <button class="icon-button" id="open-settings" type="button" aria-label="Settings" title="Settings">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 7h8m4 0h4M4 17h4m4 0h8" />
+          <circle cx="14" cy="7" r="2.1" />
+          <circle cx="10" cy="17" r="2.1" />
+        </svg>
+      </button>
+      <button class="icon-button" id="open-help" type="button" aria-label="How to play" title="How to play">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.2" />
+          <path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2-2.4 3.6" />
+          <path d="M12 17.2v.1" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="story" aria-labelledby="game-title">
+      <p class="eyebrow"><span class="eyebrow__rule" aria-hidden="true"></span> A daily star chart</p>
+      <h1 class="title" id="game-title">Asterism</h1>
+      <p class="lede">
+        Two stars in every row, column and constellation. No two stars may touch —
+        not even at a corner.
+      </p>
+
+      <div class="mode-switch" role="group" aria-label="Game mode">
+        <button type="button" class="mode-switch__button is-active" data-mode="daily" aria-pressed="true">
+          Daily chart
+        </button>
+        <button type="button" class="mode-switch__button" data-mode="free" aria-pressed="false">
+          Free sky
+        </button>
+      </div>
+
+      <ol class="rules">
+        <li><span class="rules__number">I</span><span>Two stars in every row</span></li>
+        <li><span class="rules__number">II</span><span>Two stars in every column</span></li>
+        <li><span class="rules__number">III</span><span>Two stars in every shaded region</span></li>
+        <li><span class="rules__number">IV</span><span>Stars never touch, not even diagonally</span></li>
+      </ol>
+
+      <div class="stats" aria-label="Your statistics">
+        <button class="stat" id="open-stats" type="button">
+          <span class="stat__value" id="stat-streak">0</span>
+          <span class="stat__label">day streak</span>
+        </button>
+        <span class="stats__divider" aria-hidden="true"></span>
+        <button class="stat" id="open-stats-2" type="button">
+          <span class="stat__value" id="stat-solved">0</span>
+          <span class="stat__label">charts solved</span>
+        </button>
+        <span class="stats__divider" aria-hidden="true"></span>
+        <button class="stat" id="open-stats-3" type="button">
+          <span class="stat__value" id="stat-best">—</span>
+          <span class="stat__label">best time</span>
+        </button>
+      </div>
+
+      <p class="story__note">
+        A new chart at <span class="nowrap">00:00 UTC</span>. No account, no ads,
+        no timer pressure.
+      </p>
+    </section>
+
+    <section class="play" aria-label="Puzzle board">
+      <div class="play__head">
+        <div class="play__identity">
+          <p class="eyebrow" id="mode-label">Daily chart</p>
+          <h2 class="play__title" id="puzzle-title">No. 001</h2>
+          <p class="play__sub" id="puzzle-sub">Charting the sky…</p>
+        </div>
+        <div class="play__clock">
+          <span class="play__clock-label">Time</span>
+          <span class="play__clock-value" id="timer" data-timer>0:00</span>
+        </div>
+      </div>
+
+      <div class="chart" id="chart">
+        <span class="chart__tick chart__tick--tl" aria-hidden="true"></span>
+        <span class="chart__tick chart__tick--tr" aria-hidden="true"></span>
+        <span class="chart__tick chart__tick--bl" aria-hidden="true"></span>
+        <span class="chart__tick chart__tick--br" aria-hidden="true"></span>
+
+        <div class="board-wrap" id="board-wrap" style="--n: 8">
+          <div class="pips pips--cols" id="col-pips" aria-hidden="true"></div>
+          <div class="pips pips--rows" id="row-pips" aria-hidden="true"></div>
+          <div class="board" id="board" role="grid" aria-label="Asterism puzzle board"></div>
+          <svg class="lines" id="lines" viewBox="0 0 8 8" aria-hidden="true"></svg>
+          <svg class="constellations" id="constellations" viewBox="0 0 8 8" aria-hidden="true"></svg>
+        </div>
+      </div>
+
+      <div class="play__status">
+        <span class="star-total" id="star-total">0 <span>/ 16 stars</span></span>
+        <p class="message" id="message" role="status" aria-live="polite"></p>
+      </div>
+
+      <div class="toolbar" role="group" aria-label="Puzzle tools">
+        <button class="tool" type="button" data-action="undo" disabled>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8.5 7 4.8 10.7 8.5 14.4" />
+            <path d="M4.8 10.7h8.7a5 5 0 0 1 0 10H10" />
+          </svg>
+          <span>Undo</span>
+        </button>
+        <button class="tool" type="button" data-action="check">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m5.5 12.5 4 4 9-9" />
+          </svg>
+          <span>Check</span>
+        </button>
+        <button class="tool" type="button" data-action="hint">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3.5c.6 4 2.8 6.2 6.8 6.8-4 .6-6.2 2.8-6.8 6.8-.6-4-2.8-6.2-6.8-6.8 4-.6 6.2-2.8 6.8-6.8Z" />
+            <path d="M18.4 15.6c.25 1.65 1.15 2.55 2.8 2.8-1.65.25-2.55 1.15-2.8 2.8-.25-1.65-1.15-2.55-2.8-2.8 1.65-.25 2.55-1.15 2.8-2.8Z" />
+          </svg>
+          <span>Hint</span>
+        </button>
+        <button class="tool" type="button" data-action="reset">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19.2 8.8A8 8 0 1 0 20 14" />
+            <path d="M19.2 4.5v4.3h-4.3" />
+          </svg>
+          <span>Clear</span>
+        </button>
+      </div>
+
+      <div class="solved-panel" id="solved-panel" hidden>
+        <div class="solved-panel__rating" id="solved-rating" aria-hidden="true"></div>
+        <div class="solved-panel__copy">
+          <p class="solved-panel__title">Chart complete</p>
+          <p class="solved-panel__meta" id="solved-meta"></p>
+        </div>
+        <button class="button button--primary button--small" type="button" data-action="share">Share</button>
+      </div>
+
+      <div class="countdown" id="countdown" hidden>
+        <span>Next chart in</span>
+        <span class="countdown__value" id="countdown-value">00:00:00</span>
+      </div>
+
+      <p class="keyhint">
+        Tap a cell to place a star, again for a cross. Keyboard: arrows to move,
+        space to cycle, <kbd>Z</kbd> to undo, <kbd>H</kbd> for a hint.
+      </p>
+
+      <noscript>
+        <p class="noscript">Asterism needs JavaScript to draw the chart. Please enable it and reload.</p>
+      </noscript>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<dialog class="sheet" id="help-dialog" aria-labelledby="help-title">
+  <div class="sheet__head">
+    <p class="eyebrow">Field notes</p>
+    <h2 class="sheet__title" id="help-title">How to chart the sky</h2>
+    <button class="sheet__close" type="button" data-close aria-label="Close">×</button>
+  </div>
+  <div class="sheet__body">
+    <p class="sheet__lede">
+      Every chart hides one arrangement of stars. Fill it in using only the rules —
+      there is no guesswork required.
+    </p>
+    <ol class="help-rules">
+      <li>
+        <span class="help-rules__mark">I</span>
+        <div><strong>Two per row.</strong> Every horizontal line of eight cells holds exactly two stars.</div>
+      </li>
+      <li>
+        <span class="help-rules__mark">II</span>
+        <div><strong>Two per column.</strong> The same is true from top to bottom.</div>
+      </li>
+      <li>
+        <span class="help-rules__mark">III</span>
+        <div><strong>Two per region.</strong> Each shaded constellation also holds exactly two stars.</div>
+      </li>
+      <li>
+        <span class="help-rules__mark">IV</span>
+        <div><strong>Stars keep their distance.</strong> No two stars may touch — not even at a corner.</div>
+      </li>
+    </ol>
+    <div class="legend">
+      <div class="legend__item">
+        <svg class="legend__glyph legend__glyph--star" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 1.2c.9 6.2 4.6 9.9 10.8 10.8-6.2.9-9.9 4.6-10.8 10.8C11.1 16.6 7.4 12.9 1.2 12 7.4 11.1 11.1 7.4 12 1.2Z" />
+        </svg>
+        <span><strong>Star.</strong> Definite. Two per row, column and region.</span>
+      </div>
+      <div class="legend__item">
+        <svg class="legend__glyph legend__glyph--cross" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" />
+        </svg>
+        <span><strong>Cross.</strong> Not a star. Your own pencil marks, freely changeable.</span>
+      </div>
+    </div>
+    <div class="help-grid">
+      <div>
+        <h3>Tools</h3>
+        <p><strong>Check</strong> finds a mark that breaks the rules. <strong>Hint</strong> places one star that fits every remaining possibility. Using them affects your star rating, never your streak.</p>
+      </div>
+      <div>
+        <h3>Controls</h3>
+        <p>Arrow keys move, <kbd>Space</kbd> cycles a cell, <kbd>1</kbd>/<kbd>2</kbd>/<kbd>0</kbd> set star/cross/empty, <kbd>Z</kbd> undoes, <kbd>R</kbd> clears. Drag to pencil in crosses.</p>
+      </div>
+    </div>
+    <p class="sheet__fine">
+      Each chart is generated with exactly one solution. A fresh one arrives daily at
+      00:00 UTC; the free sky is endless. Your progress stays in this browser.
+    </p>
+  </div>
+  <div class="sheet__foot">
+    <button class="button button--primary" type="button" data-close>Begin charting</button>
+  </div>
+</dialog>
+
+<dialog class="sheet sheet--win" id="win-dialog" aria-labelledby="win-title">
+  <div class="win__stars" id="win-stars" aria-hidden="true"></div>
+  <p class="eyebrow">Every star in its place</p>
+  <h2 class="sheet__title win__title" id="win-title">Chart complete</h2>
+  <p class="win__meta" id="win-meta"></p>
+  <p class="win__note" id="win-note"></p>
+  <div class="win__actions">
+    <button class="button button--primary" type="button" data-action="share">Share this chart</button>
+    <button class="button button--ghost" type="button" data-action="next-sky" id="next-sky">Play a free sky</button>
+  </div>
+  <button class="sheet__close sheet__close--light" type="button" data-close aria-label="Close">×</button>
+</dialog>
+
+<dialog class="sheet" id="stats-dialog" aria-labelledby="stats-title">
+  <div class="sheet__head">
+    <p class="eyebrow">Your ledger</p>
+    <h2 class="sheet__title" id="stats-title">Night-sky record</h2>
+    <button class="sheet__close" type="button" data-close aria-label="Close">×</button>
+  </div>
+  <div class="sheet__body">
+    <dl class="stat-list">
+      <div><dt>Charts solved</dt><dd id="stats-solved">0</dd></div>
+      <div><dt>Current streak</dt><dd id="stats-streak">0 days</dd></div>
+      <div><dt>Best time</dt><dd id="stats-best">—</dd></div>
+      <div><dt>Stars earned</dt><dd id="stats-stars">0 / 0</dd></div>
+      <div><dt>Charts opened</dt><dd id="stats-played">0</dd></div>
+    </dl>
+    <p class="sheet__fine">Free-sky solves count towards your record but never break a daily streak.</p>
+  </div>
+  <div class="sheet__foot">
+    <button class="button button--ghost" type="button" data-close>Close</button>
+  </div>
+</dialog>
+
+<dialog class="sheet" id="settings-dialog" aria-labelledby="settings-title">
+  <div class="sheet__head">
+    <p class="eyebrow">Preferences</p>
+    <h2 class="sheet__title" id="settings-title">Make yourself comfortable</h2>
+    <button class="sheet__close" type="button" data-close aria-label="Close">×</button>
+  </div>
+  <div class="sheet__body">
+    <div class="setting">
+      <div><strong>Sound</strong><span>Soft chimes as you chart.</span></div>
+      <button class="switch" type="button" id="setting-sound" role="switch" aria-checked="true"><span></span></button>
+    </div>
+    <div class="setting">
+      <div><strong>Region patterns</strong><span>Adds subtle hatching for colour-blind players.</span></div>
+      <button class="switch" type="button" id="setting-patterns" role="switch" aria-checked="false"><span></span></button>
+    </div>
+    <div class="setting">
+      <div><strong>Ambient motion</strong><span>Drifting stars and gentle animation.</span></div>
+      <button class="switch" type="button" id="setting-motion" role="switch" aria-checked="true"><span></span></button>
+    </div>
+    <div class="setting setting--danger">
+      <div><strong>Reset progress</strong><span>Clears your streak, record and saved chart.</span></div>
+      <button class="button button--ghost button--small" type="button" id="reset-progress">Reset</button>
+    </div>
+  </div>
+  <div class="sheet__foot">
+    <button class="button button--primary" type="button" data-close>Done</button>
+  </div>
+</dialog>
+
+<script>
+  import { initGame } from '../scripts/main';
+  initGame();
+</script>
