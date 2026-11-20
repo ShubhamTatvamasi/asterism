@@ -1182,9 +1182,11 @@ class Asterism {
         this.suppressClick = false;
         return;
       }
+      // Pointer capture can retarget a mouse click to the board itself, so
+      // fall back to the coordinates rather than the event target.
       const cell = this.cellAt(event);
-      if (!cell) return;
-      const index = Number(cell.dataset.index);
+      const index = cell ? Number(cell.dataset.index) : this.cellIndexAt(event.clientX, event.clientY);
+      if (index < 0) return;
       this.focusCell(index);
       this.cycleCell(index);
     });
