@@ -281,13 +281,15 @@ export interface ShareInput {
   hints: number;
   checks: number;
   url: string;
+  /** Human-readable UTC date, included with daily results. */
+  date?: string;
 }
 
 export function buildShareText(input: ShareInput): string {
   const stars = '★'.repeat(input.rating) + '☆'.repeat(3 - input.rating);
   const title =
     input.mode === 'daily'
-      ? `Asterism ${puzzleLabel(input.number)}`
+      ? `Asterism ${puzzleLabel(input.number)}${input.date ? ` · ${input.date}` : ''}`
       : `Asterism · free sky ${skyCode(input.seed)}`;
   const assists =
     input.hints + input.checks === 0

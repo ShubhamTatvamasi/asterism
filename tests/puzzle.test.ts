@@ -248,6 +248,24 @@ describe('game rules', () => {
     expect(text).toContain('?sky=abc123def456');
   });
 
+  it('dates a daily share result', () => {
+    const text = buildShareText({
+      mode: 'daily',
+      number: 12,
+      seed: 'asterism.v1.2026-12-01',
+      rating: 2,
+      elapsed: 3725,
+      hints: 1,
+      checks: 2,
+      url: 'https://shubhamtatvamasi.com/asterism/',
+      date: '1 Dec 2026',
+    });
+    expect(text).toContain('Asterism No. 012 · 1 Dec 2026');
+    expect(text).toContain('★★☆');
+    expect(text).toContain('1:02:05');
+    expect(text).toContain('3 assists');
+  });
+
   it('recognises the generated solution and nothing else', () => {
     const puzzle = generatePuzzle('solved.checks');
     expect(isSolved(puzzle, puzzle.solution)).toBe(true);

@@ -70,6 +70,116 @@ const REGION_COLOURS = [
   '#5b8ea8',
 ];
 
+function oklab(hex: string): [number, number, number] {
+  const channel = (start: number): number => {
+    const value = parseInt(hex.slice(start, start + 2), 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  const r = channel(1);
+  const g = channel(3);
+  const b = channel(5);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ];
+}
+
+const PALETTE_LAB = REGION_COLOURS.map(oklab);
+
+function paletteDistance(a: number, b: number): number {
+  const left = PALETTE_LAB[a] as [number, number, number];
+  const right = PALETTE_LAB[b] as [number, number, number];
+  return Math.hypot(left[0] - right[0], left[1] - right[1], left[2] - right[2]);
+}
+
+/**
+ * Assigns palette colours to regions so that neighbouring regions land as far
+ * apart perceptually as possible. A fixed palette would otherwise leave some
+ * charts with two adjacent regions in near-identical browns or teals.
+ */
+function assignRegionColours(regions: Uint8Array, size: number): string[] {
+  let count = 0;
+  for (const region of regions) count = Math.max(count, region + 1);
+  if (count === 0) return [];
+  if (count > REGION_COLOURS.length) {
+    return Array.from(
+      { length: count },
+      (_, region) => REGION_COLOURS[region % REGION_COLOURS.length] as string,
+    );
+  }
+
+  const edges: Array<[number, number]> = [];
+  const seen = new Set<number>();
+  const addEdge = (a: number, b: number): void => {
+    if (a === b) return;
+    const low = Math.min(a, b);
+    const high = Math.max(a, b);
+    const key = low * 32 + high;
+    if (seen.has(key)) return;
+    seen.add(key);
+    edges.push([low, high]);
+  };
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const index = y * size + x;
+      const region = regions[index] as number;
+      if (x + 1 < size) addEdge(region, regions[index + 1] as number);
+      if (y + 1 < size) addEdge(region, regions[index + size] as number);
+    }
+  }
+
+  const colourOf = new Array<number>(count).fill(-1);
+  const used = new Array<boolean>(REGION_COLOURS.length).fill(false);
+  let bestMin = -1;
+  let bestTotal = 0;
+  let best: number[] = [];
+
+  const visit = (region: number, minSoFar: number, totalSoFar: number): void => {
+    if (region === count) {
+      if (minSoFar > bestMin || (minSoFar === bestMin && totalSoFar > bestTotal)) {
+        bestMin = minSoFar;
+        bestTotal = totalSoFar;
+        best = [...colourOf];
+      }
+      return;
+    }
+
+    for (let colour = 0; colour < REGION_COLOURS.length; colour++) {
+      if (used[colour]) continue;
+      let min = minSoFar;
+      let total = totalSoFar;
+      let viable = true;
+
+      // Edges are normalised low→high, so they are settled once `region` is set.
+      for (const [a, b] of edges) {
+        if (b !== region) continue;
+        const distance = paletteDistance(colourOf[a] as number, colour);
+        if (distance < bestMin) {
+          viable = false;
+          break;
+        }
+        if (distance < min) min = distance;
+        total += distance;
+      }
+      if (!viable) continue;
+
+      colourOf[region] = colour;
+      used[colour] = true;
+      visit(region + 1, min, total);
+      used[colour] = false;
+      colourOf[region] = -1;
+    }
+  };
+
+  visit(0, Infinity, 0);
+  return best.map((colour) => REGION_COLOURS[colour] as string);
+}
+
 const STAR_SVG =
   '<svg class="glyph glyph--star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.2c.9 6.2 4.6 9.9 10.8 10.8-6.2.9-9.9 4.6-10.8 10.8C11.1 16.6 7.4 12.9 1.2 12 7.4 11.1 11.1 7.4 12 1.2Z"/></svg>';
 
@@ -116,6 +226,7 @@ class Asterism {
   private lastPainted = -1;
   private suppressClick = false;
   private hovered = -1;
+  private resumeAfterDialog = false;
 
   private readonly el = {
     app: must<HTMLElement>('#app'),
@@ -175,13 +286,15 @@ class Asterism {
     this.base = this.el.app.dataset.base ?? '/';
     this.sky = initSky(must<HTMLCanvasElement>('#sky'), this.store.settings.motion);
     this.sound.setEnabled(this.store.settings.sound);
-    this.daily = this.restoreDaily();
+
+    // Opening someone's free-sky link should not touch today's daily chart.
     const shared = this.sharedSkyFromUrl();
     if (shared) {
       this.free = this.createSession('free', shared, 0);
       this.active = this.free;
       this.mode = 'free';
     } else {
+      this.daily = this.restoreDaily();
       this.active = this.daily;
       this.mode = 'daily';
     }
@@ -349,6 +462,7 @@ class Asterism {
     this.cellEls = [];
     this.regionAnchors = new Map();
 
+    const colours = assignRegionColours(regions, size);
     let row: HTMLDivElement | null = null;
     for (let i = 0; i < size * size; i++) {
       const region = regions[i] ?? 0;
@@ -367,7 +481,7 @@ class Asterism {
       cell.dataset.index = String(i);
       cell.dataset.region = String(region);
       cell.dataset.state = 'empty';
-      cell.style.setProperty('--c', REGION_COLOURS[region % REGION_COLOURS.length] ?? '#5b7ab8');
+      cell.style.setProperty('--c', colours[region] ?? '#5b7ab8');
       cell.style.setProperty('--i', String(i));
       cell.setAttribute('role', 'gridcell');
       cell.setAttribute('aria-colindex', String(x + 1));
@@ -933,6 +1047,7 @@ class Asterism {
       hints: session.hints,
       checks: session.checks,
       url: this.shareUrl(session),
+      date: session.mode === 'daily' ? formattedDate() : undefined,
     });
 
     this.el.shareText.value = text;
@@ -1361,6 +1476,21 @@ class Asterism {
       dialog.addEventListener('click', (event) => {
         if (event.target === dialog) dialog.close();
       });
+      // Reading the rules or changing settings should not cost you time.
+      dialog.addEventListener('toggle', (event) => {
+        const { newState } = event as Event & { newState?: string };
+        if (newState === 'open') {
+          if (this.active.runStart !== null) {
+            this.stopClock(this.active);
+            this.resumeAfterDialog = true;
+          }
+          return;
+        }
+        if (this.resumeAfterDialog) {
+          this.resumeAfterDialog = false;
+          if (!this.active.solved && !document.hidden) this.startClock(this.active);
+        }
+      });
     }
 
     this.el.help.addEventListener('close', () => {
@@ -1373,15 +1503,6 @@ class Asterism {
     this.el.win.addEventListener('close', () => {
       this.updateCountdown();
     });
-
-    // A tap anywhere starts the clock, including the toolbar.
-    this.el.app.addEventListener(
-      'pointerdown',
-      () => {
-        if (!this.active.solved) this.startClock(this.active);
-      },
-      { passive: true },
-    );
   }
 }
 
