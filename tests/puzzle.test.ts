@@ -24,6 +24,7 @@ import {
   ratingFor,
   nextCellState,
   pluralize,
+  skyCode,
   CELL_EMPTY,
   CELL_MARK,
   CELL_STAR,
@@ -235,6 +236,12 @@ describe('game rules', () => {
     expect(pluralize(2, 'chart')).toBe('2 charts');
     expect(pluralize(1, 'hint')).toBe('1 hint');
     expect(pluralize(3, 'check')).toBe('3 checks');
+  });
+
+  it('labels a free sky with the front of its share code', () => {
+    const seed = 'asterism.free.6f4a2c19d3b8e507';
+    expect(skyCode(seed)).toBe('6F4A2C');
+    expect(skyCode(seed).toLowerCase()).toBe(freeSeedCode(seed)?.slice(0, 6));
   });
 
   it('round-trips free-sky share codes without a server', () => {

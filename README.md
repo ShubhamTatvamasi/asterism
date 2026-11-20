@@ -8,14 +8,14 @@ Eight rows, eight columns, eight shaded constellations. Place **two stars in eve
 
 ## Features
 
-- **Daily chart** — one deterministic 8 × 8 puzzle per UTC day, numbered from No. 001.
+- **Daily chart** — one deterministic 8 × 8 puzzle per UTC day, numbered from No. 001. A board left open across midnight keeps its chart and offers **Today’s chart** beside the clock.
 - **Free sky** — endless randomly seeded charts.
 - **Assists** — Check finds contradictions; Hint places a solver-verified star. A hint or a flagged mistake lowers the end-of-game star rating, never the streak.
 - **Persistence** — daily progress, stats, streaks, settings and onboarding stay in `localStorage`. No account, no network calls, no tracking.
 - **Input** — tap to cycle star → cross → empty, drag to pencil crosses (including the cell where the drag starts), right-click to erase. Full keyboard support: arrows, `Space`, `1`/`2`/`0`, `Z`, `Shift+Z`, `H`, `R`.
 - **Reset and new skies** — **Reset** clears the current chart, undoable with **Undo**. Free-sky mode also has a **New sky** button, which asks once before discarding a chart in progress.
 - **Craft** — canvas starfield, region colours assigned per chart so neighbouring constellations stay perceptually distinct, constellation lines on completion, WebAudio chimes, reduced-motion and pattern toggles.
-- **Share** — a share dialog with native Web Share where supported, a clipboard fallback, and a readable result. Free skies carry their seed in the link (`?sky=<code>`), so a shared link rebuilds the exact same chart. Daily results carry their date (`?day=YYYY-MM-DD`), so a link shared near midnight still opens the chart it came from.
+- **Share** — a share dialog with native Web Share where supported, a clipboard fallback, and a readable result. Free skies carry their seed in the link (`?sky=<code>`), so a shared link rebuilds the exact same chart; the sky’s on-screen name is the front of that code, so the label matches the link. Daily results carry their date (`?day=YYYY-MM-DD`), so a link shared near midnight still opens the chart it came from.
 
 ## Stack
 

@@ -478,6 +478,10 @@ svg {
   padding: 0 6px 14px;
 }
 
+.play__identity {
+  min-width: 0;
+}
+
 .play__identity .eyebrow {
   color: var(--faint);
   font-size: 9.5px;
@@ -522,6 +526,7 @@ svg {
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+  white-space: nowrap;
   transition: background 170ms ease, border-color 170ms ease, color 170ms ease;
 }
 
@@ -1753,17 +1758,17 @@ kbd {
 
 @media (max-width: 640px) {
   :root {
-    --pip: 12px;
+    --pip: 10px;
     --radius: 18px;
   }
 
   .app {
-    padding: 16px 12px 22px;
+    padding: 16px 10px 22px;
     padding:
       max(16px, env(safe-area-inset-top))
-      max(12px, env(safe-area-inset-right))
+      max(10px, env(safe-area-inset-right))
       max(22px, env(safe-area-inset-bottom))
-      max(12px, env(safe-area-inset-left));
+      max(10px, env(safe-area-inset-left));
   }
 
   .topbar {
@@ -1816,6 +1821,7 @@ kbd {
   }
 
   .play__head {
+    gap: 10px;
     padding: 0 4px 8px;
   }
 
@@ -1828,11 +1834,21 @@ kbd {
   }
 
   .chart {
-    padding: 8px;
+    padding: 6px;
   }
 
   .board-wrap {
-    gap: 4px;
+    gap: 3px;
+  }
+
+  /* Tighter pips buy the board a little more room on small screens. */
+  .pip {
+    gap: 2px;
+  }
+
+  .pip i {
+    width: 3px;
+    height: 3px;
   }
 
   .cell .glyph--star {

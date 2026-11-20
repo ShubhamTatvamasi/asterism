@@ -261,6 +261,7 @@ class Asterism {
     puzzleSub: must<HTMLElement>('#puzzle-sub'),
     modeLabel: must<HTMLElement>('#mode-label'),
     newSky: must<HTMLButtonElement>('#new-sky'),
+    nextDaily: must<HTMLButtonElement>('#next-daily'),
     topDate: must<HTMLElement>('#top-date'),
     topNumber: must<HTMLElement>('#top-number'),
     solvedPanel: must<HTMLElement>('#solved-panel'),
@@ -692,7 +693,10 @@ class Asterism {
   private updateMeta(): void {
     const session = this.active;
     const daily = session.mode === 'daily';
-    this.el.topDate.textContent = formattedDate();
+    // The masthead follows the chart on screen, which is not today's chart
+    // when the player is reading an archive or a chart that has just expired.
+    this.el.topDate.textContent =
+      daily && session.date ? formattedDate(dateFromKey(session.date)) : formattedDate();
     this.el.topNumber.textContent = daily
       ? puzzleLabel(session.number)
       : `Sky ${skyCode(session.seed)}`;
@@ -714,6 +718,9 @@ class Asterism {
       ? `${formattedDate(dateFromKey(session.date))} · 8 × 8 · two per line`
       : 'Free play · 8 × 8 · two per line';
     this.el.newSky.hidden = daily;
+    // Offer today's chart when the board is an archive or yesterday's chart
+    // that was still open when midnight passed.
+    this.el.nextDaily.hidden = !daily || session.date === this.today;
 
     document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((button) => {
       const active = button.dataset.mode === session.mode;
@@ -829,10 +836,11 @@ class Asterism {
       const key = dateKey();
       if (key !== this.today) {
         this.today = key;
-        if (this.mode === 'free') this.updateMeta();
+        // Reveals the "Today's chart" button on a board that has now expired.
+        this.updateMeta();
         this.showMessage(
           this.mode === 'daily'
-            ? 'A new daily chart is ready — reload to play it.'
+            ? 'A new daily chart is ready — Today’s chart is waiting.'
             : 'A new daily chart is ready — switch to Daily chart.',
         );
       }
@@ -1149,6 +1157,12 @@ class Asterism {
     this.el.newSky.textContent = 'New sky';
     this.setMode('free', true);
     this.showMessage('A fresh sky. Share the link to pass it on.');
+  }
+
+  /** Leaves a stale or archived chart for the day's actual chart. */
+  private playToday(): void {
+    this.setMode('daily', true);
+    this.showMessage('A new chart for today — take your time.');
   }
 
   private complete(): void {
@@ -1671,6 +1685,8 @@ class Asterism {
           break;
       }
     });
+
+    this.el.nextDaily.addEventListener('click', () => this.playToday());
 
     this.el.soundToggle.addEventListener('click', () => this.toggleSound());
     this.el.shareCopy.addEventListener('click', () => void this.copyShare());

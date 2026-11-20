@@ -285,10 +285,6 @@ export function freeSeed(): string {
   return `asterism.free.${code}`;
 }
 
-export function skyCode(seed: string): string {
-  return shortCode(seed);
-}
-
 /**
  * Free skies carry their random seed in the share URL. The code is the
  * seed suffix, so a shared link rebuilds exactly the same chart without
@@ -304,6 +300,15 @@ export function freeSeedFromCode(code: string | null | undefined): string | null
   const clean = code.trim().toLowerCase();
   if (!/^[a-z0-9]{6,32}$/.test(clean)) return null;
   return `asterism.free.${clean}`;
+}
+
+/**
+ * The short label shown for a sky. It is a prefix of the code in the share
+ * URL, so the name on screen can be matched to the link someone sent.
+ */
+export function skyCode(seed: string): string {
+  const code = freeSeedCode(seed);
+  return (code ?? shortCode(seed)).slice(0, 6).toUpperCase();
 }
 
 /* ------------------------------------------------------------------ */
