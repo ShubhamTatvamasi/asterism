@@ -27,6 +27,7 @@ import {
   isSolved,
   msUntilNextDaily,
   nextCellState,
+  pluralize,
   puzzleLabel,
   ratingFor,
   skyCode,
@@ -269,6 +270,7 @@ class Asterism {
     countdownValue: must<HTMLElement>('#countdown-value'),
     statStreak: must<HTMLElement>('#stat-streak'),
     statSolved: must<HTMLElement>('#stat-solved'),
+    statSolvedLabel: must<HTMLElement>('#stat-solved-label'),
     statBest: must<HTMLElement>('#stat-best'),
     soundToggle: must<HTMLButtonElement>('#sound-toggle'),
     help: must<HTMLDialogElement>('#help-dialog'),
@@ -531,6 +533,48 @@ class Asterism {
     this.cellEls = [];
     this.regionAnchors = new Map();
 
+    // Put each region's tally dots inside the constellation rather than at its
+    // first cell, where they often landed on a colour boundary and read as a
+    // neighbouring region's tally.
+    const anchors = new Array<number>(size).fill(-1);
+    for (let region = 0; region < size; region++) {
+      let sumX = 0;
+      let sumY = 0;
+      let count = 0;
+      for (let i = 0; i < size * size; i++) {
+        if (regions[i] !== region) continue;
+        sumX += i % size;
+        sumY += (i / size) | 0;
+        count++;
+      }
+      if (count === 0) continue;
+      const cx = sumX / count;
+      const cy = sumY / count;
+      let best = -1;
+      let bestScore = -1;
+      let bestDistance = Number.POSITIVE_INFINITY;
+      for (let i = 0; i < size * size; i++) {
+        if (regions[i] !== region) continue;
+        const x = i % size;
+        const y = (i / size) | 0;
+        // The tally sits in a cell's top-right corner, so prefer a cell whose
+        // top and right neighbours share the region: the dots then sit inside
+        // the constellation instead of on one of its edges.
+        const enclosed =
+          (x + 1 < size && regions[i + 1] === region ? 1 : 0) +
+          (y > 0 && regions[i - size] === region ? 1 : 0);
+        const dx = x - cx;
+        const dy = y - cy;
+        const distance = dx * dx + dy * dy;
+        if (enclosed > bestScore || (enclosed === bestScore && distance < bestDistance)) {
+          bestScore = enclosed;
+          bestDistance = distance;
+          best = i;
+        }
+      }
+      anchors[region] = best;
+    }
+
     const colours = assignRegionColours(regions, size);
     let row: HTMLDivElement | null = null;
     for (let i = 0; i < size * size; i++) {
@@ -557,7 +601,7 @@ class Asterism {
       cell.setAttribute('aria-rowindex', String(y + 1));
       cell.tabIndex = i === 0 ? 0 : -1;
 
-      const isAnchor = !this.regionAnchors.has(region);
+      const isAnchor = anchors[region] === i;
       cell.innerHTML =
         STAR_SVG +
         MARK_SVG +
@@ -840,6 +884,7 @@ class Asterism {
 
   private clearMessage(): void {
     window.clearTimeout(this.messageTimer);
+    this.el.message.textContent = '';
     this.el.message.classList.remove('is-visible', 'is-error');
   }
 
@@ -852,9 +897,11 @@ class Asterism {
   }
 
   private assistsLabel(session: Session): string {
-    const assists = session.hints + session.checks;
-    if (assists === 0) return 'No assists';
-    return `${assists} assist${assists === 1 ? '' : 's'} · ${session.hints} hint${session.hints === 1 ? '' : 's'}`;
+    if (session.hints + session.checks === 0) return 'No assists';
+    const parts: string[] = [];
+    if (session.hints > 0) parts.push(pluralize(session.hints, 'hint'));
+    if (session.checks > 0) parts.push(pluralize(session.checks, 'check'));
+    return parts.join(' · ');
   }
 
   private updateSolvedPanel(): void {
@@ -874,6 +921,7 @@ class Asterism {
     const streak = effectiveStreak(stats);
     this.el.statStreak.textContent = String(streak);
     this.el.statSolved.textContent = String(stats.solved);
+    this.el.statSolvedLabel.textContent = stats.solved === 1 ? 'chart solved' : 'charts solved';
     this.el.statBest.textContent = stats.best === null ? '—' : formatTime(stats.best);
 
     this.el.statsSolved.textContent = String(stats.solved);
@@ -1128,9 +1176,20 @@ class Asterism {
     this.updateSolvedPanel();
     this.updateStats();
     this.sound.win();
+    this.showMessage('Chart complete — every star in its place.');
 
     this.pendingWin = session;
-    window.setTimeout(() => this.flushPendingWin(), 900);
+    // Let the constellation lines finish drawing before the finish sheet
+    // covers the board; that reveal is the reward for solving.
+    window.setTimeout(() => this.flushPendingWin(), this.winRevealDelay());
+  }
+
+  /** Time for the stars to be joined by their constellation lines. */
+  private winRevealDelay(): number {
+    const reduced =
+      document.documentElement.classList.contains('reduce-motion') ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return reduced ? 500 : 1900;
   }
 
   /**

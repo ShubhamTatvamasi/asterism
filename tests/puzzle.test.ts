@@ -23,6 +23,7 @@ import {
   isValidDayKey,
   ratingFor,
   nextCellState,
+  pluralize,
   CELL_EMPTY,
   CELL_MARK,
   CELL_STAR,
@@ -226,6 +227,14 @@ describe('game rules', () => {
     expect(nextCellState(CELL_EMPTY)).toBe(CELL_STAR);
     expect(nextCellState(CELL_STAR)).toBe(CELL_MARK);
     expect(nextCellState(CELL_MARK)).toBe(CELL_EMPTY);
+  });
+
+  it('pluralises counts for UI labels', () => {
+    expect(pluralize(0, 'chart')).toBe('0 charts');
+    expect(pluralize(1, 'chart')).toBe('1 chart');
+    expect(pluralize(2, 'chart')).toBe('2 charts');
+    expect(pluralize(1, 'hint')).toBe('1 hint');
+    expect(pluralize(3, 'check')).toBe('3 checks');
   });
 
   it('round-trips free-sky share codes without a server', () => {

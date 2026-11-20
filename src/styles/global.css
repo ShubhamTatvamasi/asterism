@@ -1753,17 +1753,17 @@ kbd {
 
 @media (max-width: 640px) {
   :root {
-    --pip: 15px;
+    --pip: 12px;
     --radius: 18px;
   }
 
   .app {
-    padding: 16px 14px 22px;
+    padding: 16px 12px 22px;
     padding:
       max(16px, env(safe-area-inset-top))
-      max(14px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-right))
       max(22px, env(safe-area-inset-bottom))
-      max(14px, env(safe-area-inset-left));
+      max(12px, env(safe-area-inset-left));
   }
 
   .topbar {
@@ -1828,11 +1828,11 @@ kbd {
   }
 
   .chart {
-    padding: 10px;
+    padding: 8px;
   }
 
   .board-wrap {
-    gap: 5px;
+    gap: 4px;
   }
 
   .cell .glyph--star {

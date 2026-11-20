@@ -172,6 +172,11 @@ export function ratingFor(hints: number, checks: number): 1 | 2 | 3 {
   return 1;
 }
 
+/** "1 hint", "2 hints" — keeps UI counts reading naturally. */
+export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 export function formatTime(totalSeconds: number): string {
   const seconds = Math.max(0, Math.floor(totalSeconds));
   const minutes = Math.floor(seconds / 60);
