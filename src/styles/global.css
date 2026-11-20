@@ -159,6 +159,11 @@ svg {
   min-height: 100svh;
   margin: 0 auto;
   padding: 20px clamp(18px, 4vw, 52px) 28px;
+  padding:
+    max(20px, env(safe-area-inset-top))
+    max(clamp(18px, 4vw, 52px), env(safe-area-inset-right))
+    max(28px, env(safe-area-inset-bottom))
+    max(clamp(18px, 4vw, 52px), env(safe-area-inset-left));
 }
 
 .topbar {
@@ -304,14 +309,10 @@ svg {
 .lede {
   max-width: 34ch;
   margin-top: 18px;
-  color: var(--ink-dim);
+  color: #bdb5a5;
   font-size: 15.5px;
   line-height: 1.66;
   letter-spacing: 0.002em;
-}
-
-.lede {
-  color: #bdb5a5;
 }
 
 .mode-switch {
@@ -640,10 +641,10 @@ svg {
 
 .pip i {
   display: block;
-  width: 3px;
-  height: 3px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
-  background: rgba(244, 236, 220, 0.3);
+  background: rgba(244, 236, 220, 0.38);
   transition: background 220ms ease, box-shadow 220ms ease, transform 220ms ease;
 }
 
@@ -701,8 +702,16 @@ svg {
   content: '';
   position: absolute;
   inset: 0;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.13);
   pointer-events: none;
+}
+
+/* Keep vertical page scrolling available on touch devices. Dragging across
+   rows still pencils crosses; a vertical swipe scrolls the page instead. */
+@media (pointer: coarse) {
+  .cell {
+    touch-action: pan-y;
+  }
 }
 
 .cell[data-state='mark'] {
@@ -795,10 +804,10 @@ svg {
 
 .tally i {
   display: block;
-  width: 3px;
-  height: 3px;
+  width: 3.5px;
+  height: 3.5px;
   border-radius: 50%;
-  background: rgba(244, 236, 220, 0.38);
+  background: rgba(244, 236, 220, 0.45);
   transition: background 220ms ease, box-shadow 220ms ease;
 }
 
@@ -823,7 +832,7 @@ svg {
 }
 
 .lines {
-  stroke: rgba(244, 236, 220, 0.34);
+  stroke: rgba(244, 236, 220, 0.42);
   stroke-width: 1px;
   pointer-events: none;
 }
@@ -962,7 +971,7 @@ svg {
 }
 
 .solved-panel__rating .is-dim {
-  fill: rgba(244, 236, 220, 0.18);
+  fill: rgba(244, 236, 220, 0.3);
 }
 
 .solved-panel__copy {
@@ -1028,31 +1037,6 @@ kbd {
   font-size: 13px;
 }
 
-.toast {
-  position: fixed;
-  bottom: 28px;
-  left: 50%;
-  z-index: 60;
-  max-width: min(420px, calc(100vw - 40px));
-  padding: 11px 18px;
-  border: 1px solid rgba(244, 207, 135, 0.26);
-  border-radius: 999px;
-  background: rgba(14, 18, 30, 0.96);
-  box-shadow: 0 20px 50px -20px #000;
-  color: var(--ink);
-  font-size: 12px;
-  text-align: center;
-  opacity: 0;
-  transform: translate(-50%, 12px);
-  pointer-events: none;
-  transition: opacity 220ms ease, transform 220ms ease;
-}
-
-.toast.is-visible {
-  opacity: 1;
-  transform: translate(-50%, 0);
-}
-
 /* ---------- Motion ---------- */
 
 @keyframes star-pop {
@@ -1113,36 +1097,36 @@ kbd {
 }
 
 .board.patterns .cell[data-region='0'] {
-  background-image: repeating-linear-gradient(45deg, transparent 0 5px, rgba(255, 255, 255, 0.06) 5px 6px);
+  background-image: repeating-linear-gradient(45deg, transparent 0 5px, rgba(255, 255, 255, 0.15) 5px 6px);
 }
 
 .board.patterns .cell[data-region='1'] {
-  background-image: repeating-linear-gradient(-45deg, transparent 0 5px, rgba(255, 255, 255, 0.06) 5px 6px);
+  background-image: repeating-linear-gradient(-45deg, transparent 0 5px, rgba(255, 255, 255, 0.15) 5px 6px);
 }
 
 .board.patterns .cell[data-region='2'] {
-  background-image: repeating-linear-gradient(90deg, transparent 0 5px, rgba(255, 255, 255, 0.06) 5px 6px);
+  background-image: repeating-linear-gradient(90deg, transparent 0 5px, rgba(255, 255, 255, 0.15) 5px 6px);
 }
 
 .board.patterns .cell[data-region='3'] {
-  background-image: repeating-linear-gradient(0deg, transparent 0 5px, rgba(255, 255, 255, 0.06) 5px 6px);
+  background-image: repeating-linear-gradient(0deg, transparent 0 5px, rgba(255, 255, 255, 0.15) 5px 6px);
 }
 
 .board.patterns .cell[data-region='4'] {
-  background-image: repeating-linear-gradient(30deg, transparent 0 4px, rgba(255, 255, 255, 0.065) 4px 5px);
+  background-image: repeating-linear-gradient(30deg, transparent 0 4px, rgba(255, 255, 255, 0.16) 4px 5px);
 }
 
 .board.patterns .cell[data-region='5'] {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.075) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.17) 1px, transparent 1px);
   background-size: 6px 6px;
 }
 
 .board.patterns .cell[data-region='6'] {
-  background-image: repeating-linear-gradient(135deg, transparent 0 3px, rgba(255, 255, 255, 0.065) 3px 4px);
+  background-image: repeating-linear-gradient(135deg, transparent 0 3px, rgba(255, 255, 255, 0.16) 3px 4px);
 }
 
 .board.patterns .cell[data-region='7'] {
-  background-image: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.07) 1.2px, transparent 1.3px);
+  background-image: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.17) 1.2px, transparent 1.3px);
   background-size: 7px 7px;
 }
 
@@ -1510,7 +1494,7 @@ kbd {
 }
 
 .win__stars .is-dim {
-  fill: rgba(244, 236, 220, 0.14);
+  fill: rgba(244, 236, 220, 0.3);
   filter: none;
 }
 
@@ -1766,6 +1750,11 @@ kbd {
 
   .app {
     padding: 16px 14px 22px;
+    padding:
+      max(16px, env(safe-area-inset-top))
+      max(14px, env(safe-area-inset-right))
+      max(22px, env(safe-area-inset-bottom))
+      max(14px, env(safe-area-inset-left));
   }
 
   .topbar {
@@ -1788,15 +1777,15 @@ kbd {
   }
 
   .layout {
-    padding-top: 20px;
-    gap: 20px;
+    padding-top: 16px;
+    gap: 16px;
   }
 
   .lede {
     max-width: none;
-    margin-top: 12px;
-    font-size: 14px;
-    line-height: 1.6;
+    margin-top: 10px;
+    font-size: 13.5px;
+    line-height: 1.55;
   }
 
   .story > .eyebrow {
@@ -1805,20 +1794,20 @@ kbd {
 
   .title {
     margin-top: 0;
-    font-size: clamp(2.5rem, 12vw, 3.2rem);
+    font-size: clamp(2.3rem, 11vw, 2.9rem);
     line-height: 0.94;
   }
 
   .mode-switch {
-    margin-top: 16px;
+    margin-top: 12px;
   }
 
   .stats {
-    margin-top: 16px;
+    margin-top: 12px;
   }
 
   .play__head {
-    padding: 0 4px 10px;
+    padding: 0 4px 8px;
   }
 
   .play__title {
