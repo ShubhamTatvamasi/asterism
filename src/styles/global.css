@@ -1161,6 +1161,19 @@ kbd {
   box-shadow: 0 50px 140px -40px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   overflow: hidden auto;
   overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(244, 236, 220, 0.22) transparent;
+}
+
+.sheet::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sheet::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(244, 236, 220, 0.22);
+  background-clip: content-box;
 }
 
 .sheet[open] {
@@ -1218,7 +1231,7 @@ kbd {
 }
 
 .sheet__body {
-  padding: 18px 30px 6px;
+  padding: 18px 30px 8px;
 }
 
 .sheet__lede {
@@ -1230,10 +1243,27 @@ kbd {
 }
 
 .sheet__foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
   padding: 18px 30px 26px;
+  border-top: 1px solid rgba(244, 236, 220, 0.06);
+  background: #090c16;
+}
+
+/* Softens the edge where a scrolling body meets the pinned footer. */
+.sheet__foot::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  left: 0;
+  height: 18px;
+  background: linear-gradient(180deg, rgba(9, 12, 22, 0), #090c16);
+  pointer-events: none;
 }
 
 .share-text {
@@ -1354,6 +1384,13 @@ kbd {
   stroke: rgba(188, 201, 226, 0.7);
   stroke-width: 1.6;
   stroke-linecap: round;
+}
+
+.help-tally {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
 }
 
 .help-grid {
