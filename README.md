@@ -13,9 +13,9 @@ Eight rows, eight columns, eight shaded constellations. Place **two stars in eve
 - **Assists** — Check finds contradictions; Hint places a solver-verified star. A hint or a flagged mistake lowers the end-of-game star rating, never the streak.
 - **Persistence** — daily progress, stats, streaks, settings and onboarding stay in `localStorage`. No account, no network calls, no tracking.
 - **Input** — tap to cycle star → cross → empty, drag to pencil crosses (including the cell where the drag starts), right-click to erase. Full keyboard support: arrows, `Space`, `1`/`2`/`0`, `Z`, `Shift+Z`, `H`, `R`.
-- **Reset and new skies** — **Reset** clears the current chart, undoable with **Undo**. Free-sky mode also has a **New sky** button.
+- **Reset and new skies** — **Reset** clears the current chart, undoable with **Undo**. Free-sky mode also has a **New sky** button, which asks once before discarding a chart in progress.
 - **Craft** — canvas starfield, region colours assigned per chart so neighbouring constellations stay perceptually distinct, constellation lines on completion, WebAudio chimes, reduced-motion and pattern toggles.
-- **Share** — a share dialog with native Web Share where supported, a clipboard fallback, and a readable result. Free skies carry their seed in the link (`?sky=<code>`), so a shared link rebuilds the exact same chart.
+- **Share** — a share dialog with native Web Share where supported, a clipboard fallback, and a readable result. Free skies carry their seed in the link (`?sky=<code>`), so a shared link rebuilds the exact same chart. Daily results carry their date (`?day=YYYY-MM-DD`), so a link shared near midnight still opens the chart it came from.
 
 ## Stack
 
@@ -49,7 +49,7 @@ There is no backend, but that does not make the game read-only:
 
 - **Progress** is stored client-side in `localStorage` under `asterism.v1`, scoped to this origin. It survives reloads and browser restarts unless the browser clears site data.
 - **Sharing** does not need storage. A solved result is built into text on demand; `navigator.share()` opens the native share sheet on supported mobile devices, and `navigator.clipboard.writeText()` copies the same text elsewhere. The share dialog is the final fallback, so every browser gets a working action.
-- **Free-sky links** carry the deterministic seed in `?sky=<code>`. Opening the link rebuilds the puzzle without a server or a database. Daily charts are already deterministic from the UTC date.
+- **Free-sky links** carry the deterministic seed in `?sky=<code>`. Opening the link rebuilds the puzzle without a server or a database. Daily charts are already deterministic from the UTC date, and daily share links carry `?day=YYYY-MM-DD`. Opening an older day's link loads that chart as an archive: it can be solved and shared, but it never rewrites today's save or moves the streak.
 - **Reset** is client-side too: the toolbar Reset clears the board (Undo restores it), and Settings → Reset progress clears the local record.
 
 These are the same patterns used by static browser games: put personal state in browser storage, put shareable state in the URL, and use browser APIs for the share step. See MDN's Web Share API, Clipboard API and Web Storage documentation for the platform constraints (HTTPS/secure context, user activation, per-origin storage).
@@ -108,7 +108,7 @@ scripts/                  source HTML for the OG image and app icon
 
 ## Assets
 
-`public/og.png` and `public/apple-touch-icon.png` were rendered from the HTML sources in `scripts/` with headless Chrome. Re-render them after changing the brand if needed:
+`public/og.png` and the app icons were rendered from the HTML sources in `scripts/` with headless Chrome. Re-render them after changing the brand if needed:
 
 ```bash
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
@@ -120,6 +120,13 @@ scripts/                  source HTML for the OG image and app icon
   --headless=new --disable-gpu --hide-scrollbars \
   --force-device-scale-factor=1 --window-size=180,180 \
   --screenshot=public/apple-touch-icon.png "file://$PWD/scripts/icon.html"
+
+# 512 px install icon, then downscale for the 192 px entry in the manifest.
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless=new --disable-gpu --hide-scrollbars \
+  --force-device-scale-factor=2.844444 --window-size=180,180 \
+  --screenshot=public/icon-512.png "file://$PWD/scripts/icon.html"
+sips -z 192 192 public/icon-512.png --out public/icon-192.png
 ```
 
 ## License

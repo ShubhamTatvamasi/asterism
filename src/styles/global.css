@@ -832,8 +832,8 @@ svg {
 }
 
 .lines {
-  stroke: rgba(244, 236, 220, 0.42);
-  stroke-width: 1px;
+  stroke: rgba(244, 236, 220, 0.58);
+  stroke-width: 1.2px;
   pointer-events: none;
 }
 
@@ -1189,18 +1189,18 @@ kbd {
 
 .sheet__close {
   position: absolute;
-  top: 18px;
-  right: 18px;
+  top: 14px;
+  right: 14px;
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   padding: 0 0 2px;
   border: 1px solid transparent;
   border-radius: 50%;
   background: transparent;
   color: var(--muted);
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1;
   transition: background 160ms ease, color 160ms ease;
 }
@@ -1211,8 +1211,8 @@ kbd {
 }
 
 .sheet__close--light {
-  top: 14px;
-  right: 14px;
+  top: 12px;
+  right: 12px;
 }
 
 .sheet__body {

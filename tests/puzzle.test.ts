@@ -7,6 +7,7 @@ import {
 } from '../src/lib/solver';
 import {
   analyze,
+  archiveDayFor,
   computeHint,
   buildShareText,
   dailyNumber,
@@ -19,6 +20,7 @@ import {
   freeSeedCode,
   freeSeedFromCode,
   isSolved,
+  isValidDayKey,
   ratingFor,
   nextCellState,
   CELL_EMPTY,
@@ -343,6 +345,29 @@ describe('daily schedule', () => {
     expect(dailyNumberFor('2026-11-20')).toBe(1);
     expect(dailyNumberFor('2026-11-21')).toBe(2);
     expect(dateFromKey('2026-11-20').toISOString()).toBe('2026-11-20T00:00:00.000Z');
+  });
+
+  it('accepts only real day keys for archived share links', () => {
+    expect(isValidDayKey('2026-11-20')).toBe(true);
+    expect(isValidDayKey('2024-02-29')).toBe(true);
+    expect(isValidDayKey('2026-02-31')).toBe(false);
+    expect(isValidDayKey('2026-11-20T00:00:00Z')).toBe(false);
+    expect(isValidDayKey('20-11-2026')).toBe(false);
+    expect(isValidDayKey('')).toBe(false);
+    expect(isValidDayKey(null)).toBe(false);
+  });
+
+  it('opens shared daily links on the chart they were shared from', () => {
+    const today = '2026-11-22';
+    expect(archiveDayFor('2026-11-21', today)).toBe('2026-11-21');
+    expect(archiveDayFor('2026-11-20', today)).toBe('2026-11-20');
+    // Today's link is simply today's daily, not an archive.
+    expect(archiveDayFor(today, today)).toBeNull();
+    expect(archiveDayFor('2026-11-23', today)).toBeNull();
+    // Before launch and malformed values are ignored.
+    expect(archiveDayFor('2026-11-19', today)).toBeNull();
+    expect(archiveDayFor('not-a-day', today)).toBeNull();
+    expect(archiveDayFor(null, today)).toBeNull();
   });
 });
 

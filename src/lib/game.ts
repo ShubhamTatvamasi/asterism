@@ -204,6 +204,26 @@ export function dateFromKey(key: string): Date {
   return new Date(`${key}T00:00:00Z`);
 }
 
+/** True for a real calendar day written as a strict `YYYY-MM-DD` key. */
+export function isValidDayKey(value: string | null | undefined): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = dateFromKey(value);
+  return Number.isFinite(date.getTime()) && dateKey(date) === value;
+}
+
+/**
+ * Resolves a `day` share parameter to an archived chart date, or null when the
+ * value is malformed, still today, in the future or before launch.
+ */
+export function archiveDayFor(
+  value: string | null | undefined,
+  today = dateKey(),
+): string | null {
+  if (!isValidDayKey(value)) return null;
+  if (value >= today) return null;
+  return dailyNumberFor(value) >= 1 ? value : null;
+}
+
 export function dailyNumber(date = new Date()): number {
   return Math.floor((utcMidnight(date) - LAUNCH_DATE) / 86_400_000) + 1;
 }

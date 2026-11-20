@@ -11,6 +11,7 @@ import {
   CELL_MARK,
   CELL_STAR,
   analyze,
+  archiveDayFor,
   buildShareText,
   computeHint,
   dailyNumberFor,
@@ -51,6 +52,12 @@ interface Session {
   number: number;
   /** UTC day this daily chart belongs to (empty for free skies). */
   date: string;
+  /**
+   * True when the chart was opened from an older day's share link. Archived
+   * charts play exactly like a daily, but never touch today's save, streak or
+   * daily counter.
+   */
+  archive: boolean;
   puzzle: Puzzle;
   cells: Uint8Array;
   history: Uint8Array[];
@@ -233,6 +240,10 @@ class Asterism {
   private suppressClick = false;
   private hovered = -1;
   private resumeAfterDialog = false;
+  private clockWasRunning = false;
+  private pendingWin: Session | null = null;
+  private newSkyArmed = false;
+  private newSkyTimer = 0;
 
   private readonly el = {
     app: must<HTMLElement>('#app'),
@@ -293,10 +304,22 @@ class Asterism {
 
     // Opening someone's free-sky link should not touch today's daily chart.
     const shared = this.sharedSkyFromUrl();
+    const archive = shared ? null : this.archiveDayFromUrl();
     if (shared) {
       this.free = this.createSession('free', shared, 0);
       this.active = this.free;
       this.mode = 'free';
+    } else if (archive) {
+      // An older daily-share link. Keep today's save untouched.
+      this.daily = null;
+      this.active = this.createSession(
+        'daily',
+        dailySeedFor(archive),
+        dailyNumberFor(archive),
+        archive,
+        true,
+      );
+      this.mode = 'daily';
     } else {
       this.daily = this.restoreDaily();
       this.active = this.daily;
@@ -336,12 +359,30 @@ class Asterism {
     }
   }
 
+  /**
+   * A share link may name the day it was created for, so a result shared near
+   * midnight still opens the chart it belongs to.
+   */
+  private archiveDayFromUrl(): string | null {
+    try {
+      const day = new URL(window.location.href).searchParams.get('day');
+      return archiveDayFor(day, this.today);
+    } catch {
+      return null;
+    }
+  }
+
   private syncUrl(): void {
     try {
       const url = new URL(window.location.href);
       const code = this.active.mode === 'free' ? freeSeedCode(this.active.seed) : null;
       if (code) url.searchParams.set('sky', code);
       else url.searchParams.delete('sky');
+
+      const day = this.active.archive ? this.active.date : null;
+      if (day) url.searchParams.set('day', day);
+      else url.searchParams.delete('day');
+
       const next = `${url.pathname}${url.search}${url.hash}`;
       if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== next) {
         window.history.replaceState(null, '', next);
@@ -356,16 +397,24 @@ class Asterism {
     const url = new URL(path, window.location.origin);
     const code = session.mode === 'free' ? freeSeedCode(session.seed) : null;
     if (code) url.searchParams.set('sky', code);
+    if (session.mode === 'daily' && session.date) url.searchParams.set('day', session.date);
     return url.href;
   }
 
-  private createSession(mode: Mode, seed: string, number: number, date = ''): Session {
+  private createSession(
+    mode: Mode,
+    seed: string,
+    number: number,
+    date = '',
+    archive = false,
+  ): Session {
     const puzzle = this.safeGenerate(seed);
     return {
       mode,
       seed,
       number,
       date,
+      archive,
       puzzle,
       cells: new Uint8Array(puzzle.size * puzzle.size),
       history: [],
@@ -400,6 +449,7 @@ class Asterism {
         seed,
         number,
         date: key,
+        archive: false,
         puzzle,
         cells,
         history: [],
@@ -423,10 +473,13 @@ class Asterism {
   }
 
   private setMode(mode: Mode, fresh = false): void {
-    if (mode === this.mode && !fresh) return;
+    // Clicking "Daily chart" while reading an archived chart should return to
+    // today's chart, not silently do nothing.
+    if (mode === this.mode && !fresh && !(mode === 'daily' && this.active.archive)) return;
 
     if (this.active) this.stopClock(this.active);
     if (this.mode === 'daily') this.persistDaily();
+    this.pendingWin = null;
 
     if (mode === 'daily') {
       if (
@@ -599,7 +652,11 @@ class Asterism {
     this.el.topNumber.textContent = daily
       ? puzzleLabel(session.number)
       : `Sky ${skyCode(session.seed)}`;
-    this.el.modeLabel.textContent = daily ? 'Daily chart' : 'Free sky';
+    this.el.modeLabel.textContent = daily
+      ? session.archive
+        ? 'Daily archive'
+        : 'Daily chart'
+      : 'Free sky';
     this.el.puzzleTitle.textContent = daily
       ? puzzleLabel(session.number)
       : `Sky ${skyCode(session.seed)}`;
@@ -739,8 +796,14 @@ class Asterism {
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
+        this.clockWasRunning = this.active.runStart !== null;
         this.stopClock(this.active);
         this.persistDaily();
+      } else if (this.clockWasRunning) {
+        // Returning to the tab resumes the clock, but only if it was running
+        // when the tab was hidden and no dialog is holding it paused.
+        this.clockWasRunning = false;
+        if (!this.active.solved && !this.anyDialogOpen()) this.startClock(this.active);
       }
     });
     window.addEventListener('pagehide', () => {
@@ -826,12 +889,12 @@ class Asterism {
 
   private persistDaily(session: Session | null = this.daily): void {
     if (this.resetting) return;
-    if (!session || session.mode !== 'daily') return;
+    if (!session || session.mode !== 'daily' || session.archive) return;
     this.store.daily = {
       date: session.date || this.today,
       seed: session.seed,
       cells: [...session.cells],
-      elapsed: Math.round(this.elapsed(session)),
+      elapsed: Math.ceil(this.elapsed(session)),
       hints: session.hints,
       checks: session.checks,
       solved: session.solved,
@@ -1019,7 +1082,23 @@ class Asterism {
     this.showMessage('Chart reset — Undo restores it.');
   }
 
-  private newSky(): void {
+  private newSky(force = false): void {
+    const hasMarks = this.active.cells.some((value) => value !== CELL_EMPTY);
+    if (!force && this.mode === 'free' && !this.active.solved && hasMarks && !this.newSkyArmed) {
+      // One stray tap should not throw away a half-finished chart.
+      this.newSkyArmed = true;
+      this.el.newSky.textContent = 'Start fresh?';
+      window.clearTimeout(this.newSkyTimer);
+      this.newSkyTimer = window.setTimeout(() => {
+        this.newSkyArmed = false;
+        this.el.newSky.textContent = 'New sky';
+      }, 4000);
+      return;
+    }
+
+    this.newSkyArmed = false;
+    window.clearTimeout(this.newSkyTimer);
+    this.el.newSky.textContent = 'New sky';
     this.setMode('free', true);
     this.showMessage('A fresh sky. Share the link to pass it on.');
   }
@@ -1032,13 +1111,16 @@ class Asterism {
     this.stopClock(session);
     session.rating = ratingFor(session.hints, session.checks);
 
+    // Archived charts count as solves, but must never affect today's streak
+    // or daily record.
+    const countsForStreak = session.mode === 'daily' && !session.archive;
     this.store = recordSolve(this.store, {
-      mode: session.mode,
+      mode: countsForStreak ? 'daily' : 'free',
       rating: session.rating,
       elapsed: this.elapsed(session),
-      date: session.mode === 'daily' ? session.date : undefined,
+      date: countsForStreak ? session.date : undefined,
     });
-    if (session.mode === 'daily') this.persistDaily(session);
+    if (countsForStreak) this.persistDaily(session);
     else saveStore(this.store);
 
     this.analysisConflicts.clear();
@@ -1047,9 +1129,25 @@ class Asterism {
     this.updateStats();
     this.sound.win();
 
-    window.setTimeout(() => {
-      if (this.active === session && !this.anyDialogOpen()) this.openWin();
-    }, 900);
+    this.pendingWin = session;
+    window.setTimeout(() => this.flushPendingWin(), 900);
+  }
+
+  /**
+   * Opens the finish sheet once nothing else is in the way. If the player
+   * opens Help, Stats or Settings during the celebratory pause, the sheet
+   * waits for that dialog to close instead of being skipped.
+   */
+  private flushPendingWin(): void {
+    const session = this.pendingWin;
+    if (!session) return;
+    if (session !== this.active || !session.solved) {
+      this.pendingWin = null;
+      return;
+    }
+    if (this.anyDialogOpen()) return;
+    this.pendingWin = null;
+    this.openWin();
   }
 
   private anyDialogOpen(): boolean {
@@ -1078,6 +1176,10 @@ class Asterism {
       return;
     }
 
+    // Sharing from the solved panel replaces the finish sheet; don't pop it
+    // up afterwards.
+    this.pendingWin = null;
+
     const text = buildShareText({
       mode: session.mode,
       number: session.number,
@@ -1099,7 +1201,9 @@ class Asterism {
     this.el.shareCopy.textContent = 'Copy text';
     this.el.shareNote.textContent =
       session.mode === 'daily'
-        ? 'The link opens the daily chart. Nothing is uploaded or stored on a server.'
+        ? session.archive
+          ? 'The link opens this archived chart. Nothing is uploaded or stored on a server.'
+          : 'The link opens this daily chart. Nothing is uploaded or stored on a server.'
         : 'The link opens this exact free sky. Nothing is uploaded or stored on a server.';
     this.el.shareNative.hidden = typeof navigator.share !== 'function';
     if (this.el.win.open) this.el.win.close();
@@ -1150,10 +1254,6 @@ class Asterism {
     this.el.board.classList.toggle('patterns', settings.patterns);
 
     this.el.soundToggle.setAttribute('aria-pressed', String(settings.sound));
-    this.el.soundToggle.setAttribute(
-      'aria-label',
-      settings.sound ? 'Mute sound' : 'Enable sound',
-    );
     this.el.settingSound.setAttribute('aria-checked', String(settings.sound));
     this.el.settingPatterns.setAttribute('aria-checked', String(settings.patterns));
     this.el.settingMotion.setAttribute('aria-checked', String(settings.motion));
@@ -1436,6 +1536,35 @@ class Asterism {
   private bindEvents(): void {
     this.bindBoard();
 
+    // Undo/hint/reset stay useful after a toolbar click has moved focus away
+    // from the board. The board's own handler covers cell-focused keys.
+    document.addEventListener('keydown', (event) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        (target.closest('dialog') ||
+          target.closest('.cell') ||
+          target.closest('input, textarea, select, [contenteditable="true"]'))
+      ) {
+        return;
+      }
+      if (this.anyDialogOpen()) return;
+
+      const key = event.key;
+      if (key === 'z' || key === 'Z') {
+        event.preventDefault();
+        if (event.shiftKey) this.redo();
+        else this.undo();
+      } else if (key === 'h' || key === 'H') {
+        event.preventDefault();
+        this.hint();
+      } else if (key === 'r' || key === 'R') {
+        event.preventDefault();
+        this.resetBoard();
+      }
+    });
+
     document.addEventListener('click', (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
@@ -1474,7 +1603,7 @@ class Asterism {
           break;
         case 'next-sky':
           this.el.win.close();
-          this.newSky();
+          this.newSky(true);
           break;
         case 'new-sky':
           this.newSky();
@@ -1553,6 +1682,7 @@ class Asterism {
           this.resumeAfterDialog = false;
           if (!this.active.solved && !document.hidden) this.startClock(this.active);
         }
+        this.flushPendingWin();
       });
     }
 
