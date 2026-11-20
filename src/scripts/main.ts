@@ -12,8 +12,9 @@ import {
   analyze,
   buildShareText,
   computeHint,
-  dailyNumber,
-  dailySeed,
+  dailyNumberFor,
+  dailySeedFor,
+  dateFromKey,
   dateKey,
   formatCountdown,
   formatTime,
@@ -47,6 +48,8 @@ interface Session {
   mode: Mode;
   seed: string;
   number: number;
+  /** UTC day this daily chart belongs to (empty for free skies). */
+  date: string;
   puzzle: Puzzle;
   cells: Uint8Array;
   history: Uint8Array[];
@@ -207,7 +210,6 @@ class Asterism {
   private free: Session | null = null;
 
   private today = dateKey();
-  private todayNumber = dailyNumber();
 
   private cellEls: HTMLButtonElement[] = [];
   private colPips: HTMLElement[] = [];
@@ -215,8 +217,9 @@ class Asterism {
   private regionAnchors = new Map<number, HTMLButtonElement>();
 
   private analysisConflicts = new Set<number>();
+  private lastCheckSignature = '';
   private messageTimer = 0;
-  private resizeFrame = 0;
+  private resetting = false;
 
   private pointerDown = false;
   private dragging = false;
@@ -245,7 +248,6 @@ class Asterism {
     newSky: must<HTMLButtonElement>('#new-sky'),
     topDate: must<HTMLElement>('#top-date'),
     topNumber: must<HTMLElement>('#top-number'),
-    chart: must<HTMLElement>('#chart'),
     solvedPanel: must<HTMLElement>('#solved-panel'),
     solvedRating: must<HTMLElement>('#solved-rating'),
     solvedMeta: must<HTMLElement>('#solved-meta'),
@@ -255,7 +257,6 @@ class Asterism {
     statSolved: must<HTMLElement>('#stat-solved'),
     statBest: must<HTMLElement>('#stat-best'),
     soundToggle: must<HTMLButtonElement>('#sound-toggle'),
-    toast: must<HTMLElement>('#toast'),
     help: must<HTMLDialogElement>('#help-dialog'),
     win: must<HTMLDialogElement>('#win-dialog'),
     winStars: must<HTMLElement>('#win-stars'),
@@ -355,12 +356,13 @@ class Asterism {
     return url.href;
   }
 
-  private createSession(mode: Mode, seed: string, number: number): Session {
+  private createSession(mode: Mode, seed: string, number: number, date = ''): Session {
     const puzzle = this.safeGenerate(seed);
     return {
       mode,
       seed,
       number,
+      date,
       puzzle,
       cells: new Uint8Array(puzzle.size * puzzle.size),
       history: [],
@@ -376,12 +378,14 @@ class Asterism {
 
   private restoreDaily(): Session {
     const saved = this.store.daily;
-    const seed = dailySeed();
+    const key = this.today;
+    const seed = dailySeedFor(key);
+    const number = dailyNumberFor(key);
     const size = 8;
 
     if (
       saved &&
-      saved.date === this.today &&
+      saved.date === key &&
       saved.seed === seed &&
       saved.cells.length === size * size
     ) {
@@ -391,7 +395,8 @@ class Asterism {
       return {
         mode: 'daily',
         seed,
-        number: this.todayNumber,
+        number,
+        date: key,
         puzzle,
         cells,
         history: [],
@@ -405,11 +410,11 @@ class Asterism {
       };
     }
 
-    if (this.store.daily?.date !== this.today) {
+    if (this.store.daily?.date !== key) {
       this.store = markDailyPlayed(this.store);
     }
 
-    const session = this.createSession('daily', seed, this.todayNumber);
+    const session = this.createSession('daily', seed, number, key);
     this.persistDaily(session);
     return session;
   }
@@ -421,7 +426,12 @@ class Asterism {
     if (this.mode === 'daily') this.persistDaily();
 
     if (mode === 'daily') {
-      if (this.daily && this.daily.seed !== dailySeed()) this.daily = null;
+      if (
+        this.daily &&
+        (this.daily.seed !== dailySeedFor(this.today) || this.daily.date !== this.today)
+      ) {
+        this.daily = null;
+      }
       this.active = this.daily ?? this.restoreDaily();
       this.daily = this.active;
     } else {
@@ -433,6 +443,7 @@ class Asterism {
 
     this.mode = mode;
     this.analysisConflicts.clear();
+    this.lastCheckSignature = '';
     this.clearMessage();
     this.rebuild();
     this.syncUrl();
@@ -588,7 +599,7 @@ class Asterism {
       ? puzzleLabel(session.number)
       : `Sky ${skyCode(session.seed)}`;
     this.el.puzzleSub.textContent = daily
-      ? `${formattedDate()} · 8 × 8 · two per line`
+      ? `${formattedDate(dateFromKey(session.date))} · 8 × 8 · two per line`
       : 'Free play · 8 × 8 · two per line';
     this.el.newSky.hidden = daily;
 
@@ -706,7 +717,6 @@ class Asterism {
       const key = dateKey();
       if (key !== this.today) {
         this.today = key;
-        this.todayNumber = dailyNumber();
         if (this.mode === 'free') this.updateMeta();
         this.showMessage(
           this.mode === 'daily'
@@ -725,13 +735,6 @@ class Asterism {
     window.addEventListener('pagehide', () => {
       this.stopClock(this.active);
       this.persistDaily();
-    });
-    window.addEventListener('resize', () => {
-      cancelAnimationFrame(this.resizeFrame);
-      this.resizeFrame = requestAnimationFrame(() => {
-        const width = this.el.chart.clientWidth;
-        this.el.chart.style.setProperty('--chart-width', `${width}px`);
-      });
     });
   }
 
@@ -811,9 +814,10 @@ class Asterism {
   /* ---------------------------------------------------------------- */
 
   private persistDaily(session: Session | null = this.daily): void {
+    if (this.resetting) return;
     if (!session || session.mode !== 'daily') return;
     this.store.daily = {
-      date: this.today,
+      date: session.date || this.today,
       seed: session.seed,
       cells: [...session.cells],
       elapsed: Math.round(this.elapsed(session)),
@@ -846,6 +850,7 @@ class Asterism {
 
   private afterChange(): void {
     this.analysisConflicts.clear();
+    this.lastCheckSignature = '';
     this.render();
     this.persistDaily();
     if (isSolved(this.active.puzzle, this.active.cells)) this.complete();
@@ -890,6 +895,7 @@ class Asterism {
     }
     session.cells[index] = CELL_MARK;
     this.analysisConflicts.clear();
+    this.lastCheckSignature = '';
     this.render();
   }
 
@@ -901,6 +907,7 @@ class Asterism {
     session.future.push(Uint8Array.from(session.cells));
     session.cells = previous;
     this.analysisConflicts.clear();
+    this.lastCheckSignature = '';
     this.sound.undo();
     this.render();
     this.persistDaily();
@@ -915,6 +922,7 @@ class Asterism {
     session.history.push(Uint8Array.from(session.cells));
     session.cells = next;
     this.analysisConflicts.clear();
+    this.lastCheckSignature = '';
     this.sound.mark();
     this.render();
     this.persistDaily();
@@ -928,17 +936,29 @@ class Asterism {
     if (session.hints + session.checks > 400) return;
     const result = analyze(session.puzzle, session.cells);
     if (result.ok) {
+      this.lastCheckSignature = '';
       this.sound.mark();
       this.showMessage('No contradictions so far. Keep going.');
       return;
     }
 
-    session.checks++;
+    // Only a *new* set of flagged cells counts as an assist. Pressing Check
+    // again on the same position must not keep lowering the star rating.
+    const signature = [...result.conflicts].sort((a, b) => a - b).join(',');
+    if (signature !== this.lastCheckSignature) {
+      session.checks++;
+      this.lastCheckSignature = signature;
+    }
     this.analysisConflicts = new Set(result.conflicts);
     this.sound.error();
     this.render();
     this.persistDaily();
-    this.showMessage('A highlighted mark cannot be part of the solution.', true);
+    this.showMessage(
+      result.conflicts.length > 0
+        ? 'A highlighted mark cannot be part of the solution.'
+        : 'These marks cannot be completed. Try undoing your last few moves.',
+      true,
+    );
   }
 
   private hint(): void {
@@ -963,6 +983,7 @@ class Asterism {
     session.cells[result.cell] = CELL_STAR;
     session.hints++;
     this.analysisConflicts.clear();
+    this.lastCheckSignature = '';
     this.sound.hint();
     this.pulseCell(result.cell);
     this.render();
@@ -981,6 +1002,7 @@ class Asterism {
     this.pushHistory(session);
     session.cells.fill(0);
     this.analysisConflicts.clear();
+    this.lastCheckSignature = '';
     this.render();
     this.persistDaily();
     this.showMessage('Chart reset — Undo restores it.');
@@ -1003,6 +1025,7 @@ class Asterism {
       mode: session.mode,
       rating: session.rating,
       elapsed: this.elapsed(session),
+      date: session.mode === 'daily' ? session.date : undefined,
     });
     if (session.mode === 'daily') this.persistDaily(session);
     else saveStore(this.store);
@@ -1014,8 +1037,14 @@ class Asterism {
     this.sound.win();
 
     window.setTimeout(() => {
-      if (this.active === session && !this.el.win.open) this.openWin();
+      if (this.active === session && !this.anyDialogOpen()) this.openWin();
     }, 900);
+  }
+
+  private anyDialogOpen(): boolean {
+    return [this.el.help, this.el.win, this.el.share, this.el.stats, this.el.settings].some(
+      (dialog) => dialog.open,
+    );
   }
 
   private openWin(): void {
@@ -1047,7 +1076,10 @@ class Asterism {
       hints: session.hints,
       checks: session.checks,
       url: this.shareUrl(session),
-      date: session.mode === 'daily' ? formattedDate() : undefined,
+      date:
+        session.mode === 'daily' && session.date
+          ? formattedDate(dateFromKey(session.date))
+          : undefined,
     });
 
     this.el.shareText.value = text;
@@ -1056,7 +1088,7 @@ class Asterism {
     this.el.shareCopy.textContent = 'Copy text';
     this.el.shareNote.textContent =
       session.mode === 'daily'
-        ? 'The link opens today’s chart. Nothing is uploaded or stored on a server.'
+        ? 'The link opens the daily chart. Nothing is uploaded or stored on a server.'
         : 'The link opens this exact free sky. Nothing is uploaded or stored on a server.';
     this.el.shareNative.hidden = typeof navigator.share !== 'function';
     if (this.el.win.open) this.el.win.close();
@@ -1131,7 +1163,7 @@ class Asterism {
   private maybeOnboard(): void {
     if (this.store.onboarded) return;
     window.setTimeout(() => {
-      if (!this.el.help.open) this.el.help.showModal();
+      if (!this.anyDialogOpen()) this.el.help.showModal();
     }, 900);
   }
 
@@ -1461,6 +1493,7 @@ class Asterism {
         }, 4000);
         return;
       }
+      this.resetting = true;
       this.store = clearProgress();
       saveStore(this.store);
       window.location.reload();

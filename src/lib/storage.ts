@@ -87,7 +87,10 @@ export function loadStore(): Store {
         played: numberOr(stats.played, 0),
         solved: numberOr(stats.solved, 0),
         streak: numberOr(stats.streak, 0),
-        best: typeof stats.best === 'number' ? stats.best : null,
+        best:
+          typeof stats.best === 'number' && Number.isFinite(stats.best)
+            ? Math.max(1, Math.ceil(stats.best))
+            : null,
         totalStars: numberOr(stats.totalStars, 0),
         lastSolvedDate: typeof stats.lastSolvedDate === 'string' ? stats.lastSolvedDate : null,
       },
@@ -157,8 +160,9 @@ export function recordSolve(
     }
   }
 
-  if (stats.best === null || options.elapsed < stats.best) {
-    stats.best = options.elapsed;
+  const seconds = Math.max(1, Math.ceil(options.elapsed));
+  if (stats.best === null || seconds < stats.best) {
+    stats.best = seconds;
   }
 
   return { ...store, stats };

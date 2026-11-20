@@ -10,7 +10,10 @@ import {
   computeHint,
   buildShareText,
   dailyNumber,
+  dailyNumberFor,
   dailySeed,
+  dailySeedFor,
+  dateFromKey,
   dateKey,
   freeSeed,
   freeSeedCode,
@@ -331,5 +334,13 @@ describe('daily schedule', () => {
     const morning = new Date('2026-11-20T00:01:00Z');
     const evening = new Date('2026-11-20T23:59:00Z');
     expect(dailySeed(morning)).toBe(dailySeed(evening));
+  });
+
+  it('keeps a saved chart tied to its own UTC day', () => {
+    expect(dailySeedFor('2026-11-20')).toBe('asterism.v1.2026-11-20');
+    expect(dailySeedFor('2026-11-20')).toBe(dailySeed(new Date('2026-11-20T23:59:00Z')));
+    expect(dailyNumberFor('2026-11-20')).toBe(1);
+    expect(dailyNumberFor('2026-11-21')).toBe(2);
+    expect(dateFromKey('2026-11-20').toISOString()).toBe('2026-11-20T00:00:00.000Z');
   });
 });

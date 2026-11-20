@@ -74,8 +74,6 @@ export interface Analysis {
   ok: boolean;
   /** Cells involved in a contradiction or rule break. */
   conflicts: number[];
-  /** Every placed star is consistent with at least one solution. */
-  solvable: boolean;
 }
 
 /**
@@ -88,7 +86,7 @@ export function analyze(puzzle: Puzzle, cells: Uint8Array): Analysis {
     initial,
     limit: 1,
   });
-  if (base.count > 0) return { ok: true, conflicts: [], solvable: true };
+  if (base.count > 0) return { ok: true, conflicts: [] };
 
   const violations = findRuleViolations(
     puzzle.regions,
@@ -96,7 +94,7 @@ export function analyze(puzzle: Puzzle, cells: Uint8Array): Analysis {
     puzzle.starsPerUnit,
     initial,
   );
-  if (violations.length > 0) return { ok: false, conflicts: violations, solvable: false };
+  if (violations.length > 0) return { ok: false, conflicts: violations };
 
   const culprits: number[] = [];
   for (let i = 0; i < cells.length; i++) {
@@ -109,7 +107,7 @@ export function analyze(puzzle: Puzzle, cells: Uint8Array): Analysis {
     });
     if (result.count > 0) culprits.push(i);
   }
-  if (culprits.length > 0) return { ok: false, conflicts: culprits, solvable: false };
+  if (culprits.length > 0) return { ok: false, conflicts: culprits };
 
   for (let i = 0; i < cells.length; i++) {
     if (cells[i] !== CELL_MARK) continue;
@@ -121,7 +119,7 @@ export function analyze(puzzle: Puzzle, cells: Uint8Array): Analysis {
     });
     if (result.count > 0) culprits.push(i);
   }
-  return { ok: false, conflicts: culprits, solvable: false };
+  return { ok: false, conflicts: culprits };
 }
 
 export type Hint =
@@ -201,12 +199,27 @@ export function dateKey(date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
+/** Midnight UTC for a `YYYY-MM-DD` key. */
+export function dateFromKey(key: string): Date {
+  return new Date(`${key}T00:00:00Z`);
+}
+
 export function dailyNumber(date = new Date()): number {
   return Math.floor((utcMidnight(date) - LAUNCH_DATE) / 86_400_000) + 1;
 }
 
+/** Puzzle number for a `YYYY-MM-DD` key. */
+export function dailyNumberFor(key: string): number {
+  return dailyNumber(dateFromKey(key));
+}
+
+/** Seed for a `YYYY-MM-DD` key. */
+export function dailySeedFor(key: string): string {
+  return `asterism.v${PUZZLE_VERSION}.${key}`;
+}
+
 export function dailySeed(date = new Date()): string {
-  return `asterism.v${PUZZLE_VERSION}.${dateKey(date)}`;
+  return dailySeedFor(dateKey(date));
 }
 
 export function puzzleLabel(number: number): string {
