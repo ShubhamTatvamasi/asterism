@@ -1,8 +1,8 @@
 import { defineConfig } from 'astro/config';
 
 // Deployed as a GitHub Pages project site at
-// https://shubhamtatvamasi.com/astro-game/
-const base = process.env.BASE_PATH ?? '/astro-game';
+// https://shubhamtatvamasi.com/asterism/
+const base = process.env.BASE_PATH ?? '/asterism';
 
 export default defineConfig({
   site: 'https://shubhamtatvamasi.com',

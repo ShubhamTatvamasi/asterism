@@ -2,7 +2,7 @@
 
 A calm daily logic puzzle in the Star Battle tradition, built with Astro.
 
-**Play:** https://shubhamtatvamasi.com/astro-game/
+**Play:** https://shubhamtatvamasi.com/asterism/
 
 Eight rows, eight columns, eight shaded constellations. Place **two stars in every row, column and region** without letting any two stars touch — not even diagonally. Every chart is generated backwards from a finished sky and verified to have exactly one solution, so it never requires guessing.
 
@@ -29,14 +29,14 @@ Requires Node 22.23.4 or newer.
 
 ```bash
 npm install
-npm run dev       # http://localhost:4321/astro-game/
+npm run dev       # http://localhost:4321/asterism/
 npm test          # engine tests
 npm run check     # Astro + TypeScript diagnostics
 npm run build     # type-check and produce dist/
 npm run preview   # preview the production build
 ```
 
-The dev server serves the site under `/astro-game/` because that is the configured base path. Run with an empty `BASE_PATH` to serve from `/`:
+The dev server serves the site under `/asterism/` because that is the configured base path. Run with an empty `BASE_PATH` to serve from `/`:
 
 ```bash
 BASE_PATH=/ npm run dev
@@ -48,7 +48,7 @@ Deployment is handled by `.github/workflows/deploy.yml`:
 
 1. Install dependencies with `npm ci`.
 2. Run the puzzle-engine tests.
-3. Build with `BASE_PATH=/astro-game`.
+3. Build with `BASE_PATH=/asterism`.
 4. Upload `dist/` and deploy it with GitHub Pages.
 
 In the repository settings, set **Pages → Build and deployment → Source** to **GitHub Actions**. The workflow runs on every push to `main` and can also be started manually with **Run workflow**.
@@ -57,7 +57,7 @@ In the repository settings, set **Pages → Build and deployment → Source** to
 
 ```js
 site: 'https://shubhamtatvamasi.com'
-base: process.env.BASE_PATH ?? '/astro-game'
+base: process.env.BASE_PATH ?? '/asterism'
 ```
 
 Change `BASE_PATH` in the workflow if the game moves to a different path or to the domain root.

@@ -36,7 +36,7 @@ jobs:
       - name: Build the static site
         run: npm run build
         env:
-          BASE_PATH: /astro-game
+          BASE_PATH: /asterism
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
