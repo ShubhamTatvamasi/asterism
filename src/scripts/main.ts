@@ -19,6 +19,8 @@ import {
   formatTime,
   formattedDate,
   freeSeed,
+  freeSeedCode,
+  freeSeedFromCode,
   isSolved,
   msUntilNextDaily,
   nextCellState,
@@ -110,9 +112,9 @@ class Asterism {
   private dragging = false;
   private dragSnapshot: Uint8Array | null = null;
   private dragChanged = false;
+  private dragStartIndex = -1;
   private lastPainted = -1;
-  private startX = 0;
-  private startY = 0;
+  private suppressClick = false;
   private hovered = -1;
 
   private readonly el = {
@@ -129,6 +131,7 @@ class Asterism {
     puzzleTitle: must<HTMLElement>('#puzzle-title'),
     puzzleSub: must<HTMLElement>('#puzzle-sub'),
     modeLabel: must<HTMLElement>('#mode-label'),
+    newSky: must<HTMLButtonElement>('#new-sky'),
     topDate: must<HTMLElement>('#top-date'),
     topNumber: must<HTMLElement>('#top-number'),
     chart: must<HTMLElement>('#chart'),
@@ -148,6 +151,12 @@ class Asterism {
     winMeta: must<HTMLElement>('#win-meta'),
     winNote: must<HTMLElement>('#win-note'),
     nextSky: must<HTMLButtonElement>('#next-sky'),
+    share: must<HTMLDialogElement>('#share-dialog'),
+    shareText: must<HTMLTextAreaElement>('#share-text'),
+    shareNote: must<HTMLElement>('#share-note'),
+    shareCopy: must<HTMLButtonElement>('#share-copy'),
+    shareNative: must<HTMLButtonElement>('#share-native'),
+    shareStatus: must<HTMLElement>('#share-status'),
     stats: must<HTMLDialogElement>('#stats-dialog'),
     settings: must<HTMLDialogElement>('#settings-dialog'),
     statsSolved: must<HTMLElement>('#stats-solved'),
@@ -167,12 +176,21 @@ class Asterism {
     this.sky = initSky(must<HTMLCanvasElement>('#sky'), this.store.settings.motion);
     this.sound.setEnabled(this.store.settings.sound);
     this.daily = this.restoreDaily();
-    this.active = this.daily;
+    const shared = this.sharedSkyFromUrl();
+    if (shared) {
+      this.free = this.createSession('free', shared, 0);
+      this.active = this.free;
+      this.mode = 'free';
+    } else {
+      this.active = this.daily;
+      this.mode = 'daily';
+    }
     this.applySettings();
     this.bindEvents();
     this.rebuild();
     this.updateStats();
     this.startTickers();
+    this.syncUrl();
     this.maybeOnboard();
   }
 
@@ -190,6 +208,38 @@ class Asterism {
         return generatePuzzle('asterism.fallback.chart', { allowNonUnique: true });
       }
     }
+  }
+
+  private sharedSkyFromUrl(): string | null {
+    try {
+      const code = new URL(window.location.href).searchParams.get('sky');
+      return freeSeedFromCode(code);
+    } catch {
+      return null;
+    }
+  }
+
+  private syncUrl(): void {
+    try {
+      const url = new URL(window.location.href);
+      const code = this.active.mode === 'free' ? freeSeedCode(this.active.seed) : null;
+      if (code) url.searchParams.set('sky', code);
+      else url.searchParams.delete('sky');
+      const next = `${url.pathname}${url.search}${url.hash}`;
+      if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== next) {
+        window.history.replaceState(null, '', next);
+      }
+    } catch {
+      // URL state is an enhancement; the game works without it.
+    }
+  }
+
+  private shareUrl(session: Session): string {
+    const path = this.base.endsWith('/') ? this.base : `${this.base}/`;
+    const url = new URL(path, window.location.origin);
+    const code = session.mode === 'free' ? freeSeedCode(session.seed) : null;
+    if (code) url.searchParams.set('sky', code);
+    return url.href;
   }
 
   private createSession(mode: Mode, seed: string, number: number): Session {
@@ -272,6 +322,7 @@ class Asterism {
     this.analysisConflicts.clear();
     this.clearMessage();
     this.rebuild();
+    this.syncUrl();
   }
 
   /* ---------------------------------------------------------------- */
@@ -425,6 +476,7 @@ class Asterism {
     this.el.puzzleSub.textContent = daily
       ? `${formattedDate()} · 8 × 8 · two per line`
       : 'Free play · 8 × 8 · two per line';
+    this.el.newSky.hidden = daily;
 
     document.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((button) => {
       const active = button.dataset.mode === session.mode;
@@ -817,7 +869,12 @@ class Asterism {
     this.analysisConflicts.clear();
     this.render();
     this.persistDaily();
-    this.showMessage('Chart cleared — Undo restores it.');
+    this.showMessage('Chart reset — Undo restores it.');
+  }
+
+  private newSky(): void {
+    this.setMode('free', true);
+    this.showMessage('A fresh sky. Share the link to pass it on.');
   }
 
   private complete(): void {
@@ -866,8 +923,7 @@ class Asterism {
       this.showMessage('Finish the chart first — then share it.');
       return;
     }
-    const path = this.base.endsWith('/') ? this.base : `${this.base}/`;
-    const url = new URL(path, window.location.origin).href;
+
     const text = buildShareText({
       mode: session.mode,
       number: session.number,
@@ -876,33 +932,51 @@ class Asterism {
       elapsed: this.elapsed(session),
       hints: session.hints,
       checks: session.checks,
-      url,
+      url: this.shareUrl(session),
     });
-    void this.deliverShare(text, url);
+
+    this.el.shareText.value = text;
+    this.el.shareStatus.textContent = '';
+    this.el.shareStatus.classList.remove('is-error');
+    this.el.shareCopy.textContent = 'Copy text';
+    this.el.shareNote.textContent =
+      session.mode === 'daily'
+        ? 'The link opens today’s chart. Nothing is uploaded or stored on a server.'
+        : 'The link opens this exact free sky. Nothing is uploaded or stored on a server.';
+    this.el.shareNative.hidden = typeof navigator.share !== 'function';
+    if (this.el.win.open) this.el.win.close();
+    if (!this.el.share.open) this.el.share.showModal();
   }
 
-  private async deliverShare(text: string, url: string): Promise<void> {
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share({ title: 'Asterism', text });
-        return;
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') return;
-      }
-    }
+  private async copyShare(): Promise<void> {
+    const text = this.el.shareText.value;
     try {
       await navigator.clipboard.writeText(text);
-      this.showMessage('Result copied to your clipboard.');
+      this.el.shareStatus.textContent = 'Copied to your clipboard.';
+      this.el.shareStatus.classList.remove('is-error');
+      return;
     } catch {
-      const area = document.createElement('textarea');
-      area.value = text;
-      area.style.position = 'fixed';
-      area.style.opacity = '0';
-      document.body.append(area);
-      area.select();
-      const ok = document.execCommand('copy');
-      area.remove();
-      this.showMessage(ok ? 'Result copied to your clipboard.' : text);
+      // Clipboard access can be blocked by permissions or an unfocused tab.
+    }
+
+    this.el.shareText.focus();
+    this.el.shareText.select();
+    const copied = document.execCommand('copy');
+    this.el.shareStatus.textContent = copied
+      ? 'Copied to your clipboard.'
+      : 'Select the text above and copy it manually.';
+    this.el.shareStatus.classList.toggle('is-error', !copied);
+  }
+
+  private async nativeShare(): Promise<void> {
+    if (typeof navigator.share !== 'function') return;
+    try {
+      await navigator.share({ title: 'Asterism', text: this.el.shareText.value });
+      this.el.share.close();
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      this.el.shareStatus.textContent = 'The share sheet could not open. Copy the text instead.';
+      this.el.shareStatus.classList.add('is-error');
     }
   }
 
@@ -999,6 +1073,40 @@ class Asterism {
     if (scroll) cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
 
+  private cellIndexAt(x: number, y: number): number {
+    const element = document.elementFromPoint(x, y);
+    const cell = element?.closest<HTMLButtonElement>('.cell') ?? null;
+    return cell ? Number(cell.dataset.index) : -1;
+  }
+
+  /** Marks every empty cell between two indices, so a fast drag never skips one. */
+  private paintPath(from: number, to: number): void {
+    const size = this.active.puzzle.size;
+    let x0 = from % size;
+    let y0 = (from / size) | 0;
+    const x1 = to % size;
+    const y1 = (to / size) | 0;
+    const dx = Math.abs(x1 - x0);
+    const sx = x0 < x1 ? 1 : -1;
+    const dy = -Math.abs(y1 - y0);
+    const sy = y0 < y1 ? 1 : -1;
+    let error = dx + dy;
+
+    for (;;) {
+      this.paintMark(y0 * size + x0);
+      if (x0 === x1 && y0 === y1) break;
+      const doubled = 2 * error;
+      if (doubled >= dy) {
+        error += dy;
+        x0 += sx;
+      }
+      if (doubled <= dx) {
+        error += dx;
+        y0 += sy;
+      }
+    }
+  }
+
   private bindBoard(): void {
     const board = this.el.board;
 
@@ -1012,9 +1120,8 @@ class Asterism {
       this.pointerDown = true;
       this.dragging = false;
       this.dragChanged = false;
+      this.dragStartIndex = index;
       this.lastPainted = index;
-      this.startX = event.clientX;
-      this.startY = event.clientY;
       this.dragSnapshot = Uint8Array.from(this.active.cells);
       try {
         board.setPointerCapture(event.pointerId);
@@ -1025,31 +1132,45 @@ class Asterism {
 
     board.addEventListener('pointermove', (event) => {
       if (!this.pointerDown) return;
-      const distance = Math.hypot(event.clientX - this.startX, event.clientY - this.startY);
-      if (!this.dragging && distance < 8) return;
-      this.dragging = true;
+      const index = this.cellIndexAt(event.clientX, event.clientY);
+      if (index < 0) return;
 
-      const element = document.elementFromPoint(event.clientX, event.clientY);
-      const cell = element?.closest<HTMLButtonElement>('.cell') ?? null;
-      if (!cell) return;
-      const index = Number(cell.dataset.index);
+      if (!this.dragging) {
+        // A press that stays inside its starting cell is a tap, even with a
+        // little finger jitter. Only entering another cell begins a drag.
+        if (index === this.dragStartIndex) return;
+        this.dragging = true;
+        this.paintPath(this.dragStartIndex, index);
+        this.lastPainted = index;
+        return;
+      }
+
       if (index === this.lastPainted) return;
+      this.paintPath(this.lastPainted, index);
       this.lastPainted = index;
-      this.paintMark(index);
     });
 
     const endDrag = (): void => {
       if (!this.pointerDown) return;
+      const wasDragging = this.dragging;
       this.pointerDown = false;
-      if (this.dragging) {
-        this.suppressClickUntil = performance.now() + 350;
+      this.dragging = false;
+      this.dragStartIndex = -1;
+      this.lastPainted = -1;
+      this.dragSnapshot = null;
+
+      if (wasDragging) {
+        // Swallow the synthetic click that follows a drag, but never block a
+        // deliberate next tap.
+        this.suppressClick = true;
+        window.setTimeout(() => {
+          this.suppressClick = false;
+        }, 80);
         if (this.dragChanged) {
           this.persistDaily();
           this.showMessage('Crosses pencilled in. Tap for a star.');
         }
       }
-      this.dragging = false;
-      this.dragSnapshot = null;
       this.dragChanged = false;
     };
 
@@ -1057,7 +1178,10 @@ class Asterism {
     board.addEventListener('pointercancel', endDrag);
 
     board.addEventListener('click', (event) => {
-      if (performance.now() < this.suppressClickUntil) return;
+      if (this.suppressClick) {
+        this.suppressClick = false;
+        return;
+      }
       const cell = this.cellAt(event);
       if (!cell) return;
       const index = Number(cell.dataset.index);
@@ -1126,8 +1250,6 @@ class Asterism {
     });
   }
 
-  private suppressClickUntil = 0;
-
   /* ---------------------------------------------------------------- */
   /* Wiring                                                           */
   /* ---------------------------------------------------------------- */
@@ -1173,7 +1295,10 @@ class Asterism {
           break;
         case 'next-sky':
           this.el.win.close();
-          this.setMode('free', true);
+          this.newSky();
+          break;
+        case 'new-sky':
+          this.newSky();
           break;
         default:
           break;
@@ -1181,6 +1306,8 @@ class Asterism {
     });
 
     this.el.soundToggle.addEventListener('click', () => this.toggleSound());
+    this.el.shareCopy.addEventListener('click', () => void this.copyShare());
+    this.el.shareNative.addEventListener('click', () => void this.nativeShare());
 
     must<HTMLButtonElement>('#open-help').addEventListener('click', () => {
       if (!this.el.help.open) this.el.help.showModal();
@@ -1222,7 +1349,13 @@ class Asterism {
       window.location.reload();
     });
 
-    for (const dialog of [this.el.help, this.el.win, this.el.stats, this.el.settings]) {
+    for (const dialog of [
+      this.el.help,
+      this.el.win,
+      this.el.share,
+      this.el.stats,
+      this.el.settings,
+    ]) {
       dialog.addEventListener('click', (event) => {
         if (event.target === dialog) dialog.close();
       });

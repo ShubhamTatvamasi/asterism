@@ -251,6 +251,23 @@ export function skyCode(seed: string): string {
   return shortCode(seed);
 }
 
+/**
+ * Free skies carry their random seed in the share URL. The code is the
+ * seed suffix, so a shared link rebuilds exactly the same chart without
+ * any server or database.
+ */
+export function freeSeedCode(seed: string): string | null {
+  const match = /^asterism\.free\.([a-z0-9]{6,32})$/i.exec(seed);
+  return match ? (match[1] as string).toLowerCase() : null;
+}
+
+export function freeSeedFromCode(code: string | null | undefined): string | null {
+  if (!code) return null;
+  const clean = code.trim().toLowerCase();
+  if (!/^[a-z0-9]{6,32}$/.test(clean)) return null;
+  return `asterism.free.${clean}`;
+}
+
 /* ------------------------------------------------------------------ */
 /* Sharing                                                             */
 /* ------------------------------------------------------------------ */

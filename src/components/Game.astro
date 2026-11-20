@@ -100,9 +100,14 @@ const base = import.meta.env.BASE_URL;
           <h2 class="play__title" id="puzzle-title">No. 001</h2>
           <p class="play__sub" id="puzzle-sub">Charting the sky…</p>
         </div>
-        <div class="play__clock">
-          <span class="play__clock-label">Time</span>
-          <span class="play__clock-value" id="timer" data-timer>0:00</span>
+        <div class="play__aside">
+          <div class="play__clock">
+            <span class="play__clock-label">Time</span>
+            <span class="play__clock-value" id="timer" data-timer>0:00</span>
+          </div>
+          <button class="play__new" id="new-sky" type="button" data-action="new-sky" hidden>
+            New sky
+          </button>
         </div>
       </div>
 
@@ -147,12 +152,12 @@ const base = import.meta.env.BASE_URL;
           </svg>
           <span>Hint</span>
         </button>
-        <button class="tool" type="button" data-action="reset">
+        <button class="tool" type="button" data-action="reset" title="Clear all marks from this chart">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M19.2 8.8A8 8 0 1 0 20 14" />
             <path d="M19.2 4.5v4.3h-4.3" />
           </svg>
-          <span>Clear</span>
+          <span>Reset</span>
         </button>
       </div>
 
@@ -171,8 +176,8 @@ const base = import.meta.env.BASE_URL;
       </div>
 
       <p class="keyhint">
-        Tap a cell to place a star, again for a cross. Keyboard: arrows to move,
-        space to cycle, <kbd>Z</kbd> to undo, <kbd>H</kbd> for a hint.
+        Tap a cell to place a star, again for a cross. Drag to pencil crosses. Keyboard:
+        arrows to move, space to cycle, <kbd>Z</kbd> to undo, <kbd>H</kbd> for a hint.
       </p>
 
       <noscript>
@@ -230,16 +235,17 @@ const base = import.meta.env.BASE_URL;
     <div class="help-grid">
       <div>
         <h3>Tools</h3>
-        <p><strong>Check</strong> finds a mark that breaks the rules. <strong>Hint</strong> places one star that fits every remaining possibility. Using them affects your star rating, never your streak.</p>
+        <p><strong>Check</strong> finds a mark that breaks the rules. <strong>Hint</strong> places one star that fits every remaining possibility. <strong>Reset</strong> clears your marks. Using assists affects your star rating, never your streak.</p>
       </div>
       <div>
         <h3>Controls</h3>
-        <p>Arrow keys move, <kbd>Space</kbd> cycles a cell, <kbd>1</kbd>/<kbd>2</kbd>/<kbd>0</kbd> set star/cross/empty, <kbd>Z</kbd> undoes, <kbd>R</kbd> clears. Drag to pencil in crosses.</p>
+        <p>Arrow keys move, <kbd>Space</kbd> cycles a cell, <kbd>1</kbd>/<kbd>2</kbd>/<kbd>0</kbd> set star/cross/empty, <kbd>Z</kbd> undoes, <kbd>R</kbd> resets. Drag to pencil in crosses.</p>
       </div>
     </div>
     <p class="sheet__fine">
       Each chart is generated with exactly one solution. A fresh one arrives daily at
-      00:00 UTC; the free sky is endless. Your progress stays in this browser.
+      00:00 UTC; the free sky is endless. Progress is saved in this browser only.
+      Sharing copies a result and, for free skies, a link that rebuilds the same chart.
     </p>
   </div>
   <div class="sheet__foot">
@@ -258,6 +264,29 @@ const base = import.meta.env.BASE_URL;
     <button class="button button--ghost" type="button" data-action="next-sky" id="next-sky">Play a free sky</button>
   </div>
   <button class="sheet__close sheet__close--light" type="button" data-close aria-label="Close">×</button>
+</dialog>
+
+<dialog class="sheet sheet--share" id="share-dialog" aria-labelledby="share-title">
+  <div class="sheet__head">
+    <p class="eyebrow">Pass it on</p>
+    <h2 class="sheet__title" id="share-title">Share this chart</h2>
+    <button class="sheet__close" type="button" data-close aria-label="Close">×</button>
+  </div>
+  <div class="sheet__body">
+    <p class="sheet__lede" id="share-note">
+      The link opens today’s chart. Nothing is uploaded or stored on a server.
+    </p>
+    <textarea class="share-text" id="share-text" readonly rows="5" spellcheck="false" aria-label="Share text"></textarea>
+    <p class="share-status" id="share-status" role="status" aria-live="polite"></p>
+    <p class="sheet__fine">
+      Copy this text into a message, or use your device’s share sheet where available.
+    </p>
+  </div>
+  <div class="sheet__foot share-actions">
+    <button class="button button--primary" type="button" id="share-copy">Copy text</button>
+    <button class="button button--ghost" type="button" id="share-native" hidden>Share…</button>
+    <button class="button button--ghost" type="button" data-close>Close</button>
+  </div>
 </dialog>
 
 <dialog class="sheet" id="stats-dialog" aria-labelledby="stats-title">

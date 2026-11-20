@@ -12,9 +12,10 @@ Eight rows, eight columns, eight shaded constellations. Place **two stars in eve
 - **Free sky** — endless randomly seeded charts.
 - **Assists** — Check finds contradictions; Hint places a solver-verified star. Each assist lowers the end-of-game star rating, never the streak.
 - **Persistence** — daily progress, stats, streaks, settings and onboarding stay in `localStorage`. No account, no network calls, no tracking.
-- **Input** — tap to cycle star → cross → empty, drag to pencil crosses, right-click to erase. Full keyboard support: arrows, `Space`, `1`/`2`/`0`, `Z`, `Shift+Z`, `H`, `R`.
+- **Input** — tap to cycle star → cross → empty, drag to pencil crosses (including the cell where the drag starts), right-click to erase. Full keyboard support: arrows, `Space`, `1`/`2`/`0`, `Z`, `Shift+Z`, `H`, `R`.
+- **Reset and new skies** — **Reset** clears the current chart, undoable with **Undo**. Free-sky mode also has a **New sky** button.
 - **Craft** — canvas starfield, seeded region palette, constellation lines on completion, WebAudio chimes, reduced-motion and pattern toggles.
-- **Share** — native share sheet where available, with a clipboard fallback.
+- **Share** — a share dialog with native Web Share where supported, a clipboard fallback, and a readable result. Free skies carry their seed in the link (`?sky=<code>`), so a shared link rebuilds the exact same chart.
 
 ## Stack
 
@@ -41,6 +42,17 @@ The dev server serves the site under `/asterism/` because that is the configured
 ```bash
 BASE_PATH=/ npm run dev
 ```
+
+## Static hosting, storage and sharing
+
+There is no backend, but that does not make the game read-only:
+
+- **Progress** is stored client-side in `localStorage` under `asterism.v1`, scoped to this origin. It survives reloads and browser restarts unless the browser clears site data.
+- **Sharing** does not need storage. A solved result is built into text on demand; `navigator.share()` opens the native share sheet on supported mobile devices, and `navigator.clipboard.writeText()` copies the same text elsewhere. The share dialog is the final fallback, so every browser gets a working action.
+- **Free-sky links** carry the deterministic seed in `?sky=<code>`. Opening the link rebuilds the puzzle without a server or a database. Daily charts are already deterministic from the UTC date.
+- **Reset** is client-side too: the toolbar Reset clears the board (Undo restores it), and Settings → Reset progress clears the local record.
+
+These are the same patterns used by static browser games: put personal state in browser storage, put shareable state in the URL, and use browser APIs for the share step. See MDN's Web Share API, Clipboard API and Web Storage documentation for the platform constraints (HTTPS/secure context, user activation, per-origin storage).
 
 ## Deployment
 

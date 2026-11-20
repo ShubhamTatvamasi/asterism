@@ -8,9 +8,13 @@ import {
 import {
   analyze,
   computeHint,
+  buildShareText,
   dailyNumber,
   dailySeed,
   dateKey,
+  freeSeed,
+  freeSeedCode,
+  freeSeedFromCode,
   isSolved,
   ratingFor,
   nextCellState,
@@ -216,6 +220,32 @@ describe('game rules', () => {
     expect(nextCellState(CELL_EMPTY)).toBe(CELL_STAR);
     expect(nextCellState(CELL_STAR)).toBe(CELL_MARK);
     expect(nextCellState(CELL_MARK)).toBe(CELL_EMPTY);
+  });
+
+  it('round-trips free-sky share codes without a server', () => {
+    const seed = freeSeed();
+    const code = freeSeedCode(seed);
+    expect(code).toBeTruthy();
+    expect(freeSeedFromCode(code)).toBe(seed);
+    expect(freeSeedFromCode('not a code!')).toBeNull();
+    expect(freeSeedFromCode('abc')).toBeNull();
+  });
+
+  it('builds share text with the game link', () => {
+    const text = buildShareText({
+      mode: 'free',
+      number: 0,
+      seed: 'asterism.free.abc123def456',
+      rating: 3,
+      elapsed: 125,
+      hints: 0,
+      checks: 0,
+      url: 'https://shubhamtatvamasi.com/asterism/?sky=abc123def456',
+    });
+    expect(text).toContain('★★★');
+    expect(text).toContain('2:05');
+    expect(text).toContain('no assists');
+    expect(text).toContain('?sky=abc123def456');
   });
 
   it('recognises the generated solution and nothing else', () => {
