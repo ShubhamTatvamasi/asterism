@@ -857,6 +857,7 @@ svg {
 
 .board.is-solved .cell {
   background: color-mix(in oklab, var(--c) 20%, #0b101c);
+  cursor: default;
 }
 
 .board.is-solved .cell[data-state='star'] .glyph--star {
@@ -1697,6 +1698,14 @@ kbd {
 }
 
 /* ---------- Responsive ---------- */
+
+/* On shorter desktop screens, size the board against the viewport so the
+   status line and tools stay above the fold instead of hiding below it. */
+@media (min-width: 1041px) and (max-height: 900px) {
+  .board-wrap {
+    max-width: clamp(320px, calc(100svh - 390px), 520px);
+  }
+}
 
 @media (max-width: 1040px) {
   .layout {

@@ -25,6 +25,7 @@ import {
   CELL_MARK,
   CELL_STAR,
 } from '../src/lib/game';
+import { effectiveStreak, loadStore, recordSolve } from '../src/lib/storage';
 
 function regionSizes(puzzle: Puzzle): number[] {
   const sizes = new Array<number>(puzzle.size).fill(0);
@@ -342,5 +343,55 @@ describe('daily schedule', () => {
     expect(dailyNumberFor('2026-11-20')).toBe(1);
     expect(dailyNumberFor('2026-11-21')).toBe(2);
     expect(dateFromKey('2026-11-20').toISOString()).toBe('2026-11-20T00:00:00.000Z');
+  });
+});
+
+describe('persistence', () => {
+  const solve = (
+    store: ReturnType<typeof loadStore>,
+    date: string,
+    mode: 'daily' | 'free' = 'daily',
+  ) => recordSolve(store, { mode, rating: 3, elapsed: 100, date });
+
+  it('builds a streak from consecutive daily solves and resets after a gap', () => {
+    let store = loadStore();
+    store = solve(store, '2026-11-20');
+    expect(store.stats.streak).toBe(1);
+    expect(store.stats.lastSolvedDate).toBe('2026-11-20');
+
+    store = solve(store, '2026-11-21');
+    expect(store.stats.streak).toBe(2);
+
+    // Solving the same day again must not extend the streak.
+    store = solve(store, '2026-11-21');
+    expect(store.stats.streak).toBe(2);
+
+    store = solve(store, '2026-11-24');
+    expect(store.stats.streak).toBe(1);
+    expect(store.stats.solved).toBe(4);
+  });
+
+  it('keeps yesterday’s streak alive until today is missed', () => {
+    const store = solve(loadStore(), '2026-11-20');
+    expect(effectiveStreak(store.stats, new Date('2026-11-20T12:00:00Z'))).toBe(1);
+    expect(effectiveStreak(store.stats, new Date('2026-11-21T23:00:00Z'))).toBe(1);
+    expect(effectiveStreak(store.stats, new Date('2026-11-22T00:01:00Z'))).toBe(0);
+  });
+
+  it('counts free-sky solves without touching the daily streak', () => {
+    let store = solve(loadStore(), '2026-11-20');
+    store = solve(store, '2026-11-20', 'free');
+    expect(store.stats.solved).toBe(2);
+    expect(store.stats.streak).toBe(1);
+    expect(store.stats.lastSolvedDate).toBe('2026-11-20');
+  });
+
+  it('rounds best times up to whole seconds', () => {
+    const store = recordSolve(loadStore(), {
+      mode: 'free',
+      rating: 3,
+      elapsed: 125.2,
+    });
+    expect(store.stats.best).toBe(126);
   });
 });

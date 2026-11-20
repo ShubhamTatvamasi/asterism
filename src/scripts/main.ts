@@ -7,6 +7,7 @@
 
 import { generatePuzzle, type Puzzle } from '../lib/generator';
 import {
+  CELL_EMPTY,
   CELL_MARK,
   CELL_STAR,
   analyze,
@@ -226,6 +227,8 @@ class Asterism {
   private dragSnapshot: Uint8Array | null = null;
   private dragChanged = false;
   private dragStartIndex = -1;
+  private dragOriginX = 0;
+  private dragOriginY = 0;
   private lastPainted = -1;
   private suppressClick = false;
   private hovered = -1;
@@ -470,6 +473,8 @@ class Asterism {
     const puzzle = this.active.puzzle;
     const { size, regions } = puzzle;
     this.el.board.replaceChildren();
+    this.el.board.setAttribute('aria-rowcount', String(size));
+    this.el.board.setAttribute('aria-colcount', String(size));
     this.cellEls = [];
     this.regionAnchors = new Map();
 
@@ -598,6 +603,12 @@ class Asterism {
     this.el.puzzleTitle.textContent = daily
       ? puzzleLabel(session.number)
       : `Sky ${skyCode(session.seed)}`;
+    this.el.board.setAttribute(
+      'aria-label',
+      daily
+        ? `Asterism ${puzzleLabel(session.number)} puzzle board`
+        : `Asterism free sky ${skyCode(session.seed)} puzzle board`,
+    );
     this.el.puzzleSub.textContent = daily
       ? `${formattedDate(dateFromKey(session.date))} · 8 × 8 · two per line`
       : 'Free play · 8 × 8 · two per line';
@@ -1160,10 +1171,23 @@ class Asterism {
     this.updateSetting('sound', !this.store.settings.sound);
   }
 
+  private markOnboarded(): void {
+    if (this.store.onboarded) return;
+    this.store.onboarded = true;
+    saveStore(this.store);
+  }
+
   private maybeOnboard(): void {
     if (this.store.onboarded) return;
     window.setTimeout(() => {
-      if (!this.anyDialogOpen()) this.el.help.showModal();
+      if (this.anyDialogOpen()) return;
+      // Never interrupt someone who has already begun charting: they have
+      // found their way around, and a modal would eat their first move.
+      if (this.active.cells.some((value) => value !== CELL_EMPTY)) {
+        this.markOnboarded();
+        return;
+      }
+      this.el.help.showModal();
     }, 900);
   }
 
@@ -1268,6 +1292,8 @@ class Asterism {
       this.dragging = false;
       this.dragChanged = false;
       this.dragStartIndex = index;
+      this.dragOriginX = event.clientX;
+      this.dragOriginY = event.clientY;
       this.lastPainted = index;
       this.dragSnapshot = Uint8Array.from(this.active.cells);
       try {
@@ -1284,8 +1310,12 @@ class Asterism {
 
       if (!this.dragging) {
         // A press that stays inside its starting cell is a tap, even with a
-        // little finger jitter. Only entering another cell begins a drag.
+        // little finger jitter. Only entering another cell begins a drag, and
+        // only once the pointer has travelled far enough to be deliberate.
         if (index === this.dragStartIndex) return;
+        if (Math.hypot(event.clientX - this.dragOriginX, event.clientY - this.dragOriginY) < 8) {
+          return;
+        }
         this.dragging = true;
         this.paintPath(this.dragStartIndex, index);
         this.lastPainted = index;
@@ -1526,12 +1556,7 @@ class Asterism {
       });
     }
 
-    this.el.help.addEventListener('close', () => {
-      if (!this.store.onboarded) {
-        this.store.onboarded = true;
-        saveStore(this.store);
-      }
-    });
+    this.el.help.addEventListener('close', () => this.markOnboarded());
 
     this.el.win.addEventListener('close', () => {
       this.updateCountdown();
